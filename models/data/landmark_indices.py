@@ -41,6 +41,7 @@ class LipPoints:
 
 class HandLandmark:
     def __init__(self):
+        self.hand_points = np.arange(21)
         self.hand_routes = [[0, *range(1, 5)],
                             [0, *range(5, 9)],
                             [0, *range(9, 13)],
