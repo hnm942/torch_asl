@@ -16,8 +16,9 @@ if __name__ == "__main__":
     # print(df.iloc[0])
     data_path = "/workspace/data/asl-fingerspelling/train_landmarks"
     parquet_files = os.listdir("/workspace/data/asl-fingerspelling/train_landmarks")
-    output_path = "/workspace/data/asl_numpy_dataset"
+    output_path = "/workspace/data/asl_numpy_dataset/train_landmarks"
     for i in range(len(parquet_files)):
+        print(i)
         parquet = pd.read_parquet(os.path.join(data_path, parquet_files[i]))
         # get list indices
         lip_list = [f'x_face_{i}' for i in list(lip_indices)] + [f'y_face_{i}' for i in list(lip_indices)] + [f'z_face_{i}' for i in list(lip_indices)]
@@ -26,11 +27,12 @@ if __name__ == "__main__":
         interested_list = lip_list + lhand_list + rhand_list
         
         temp = np.hstack((parquet.index.values.reshape(-1, 1).astype(int), parquet.loc[:, interested_list].to_numpy()))
-        if i == 0:
-            arr = temp
-        else:
-            arr = np.concatenate((arr, temp), axis = 0)
-    np.save(os.path.join(output_path, 'train_landmarks.npy'), arr)
+        np.save(os.path.join(output_path, '{}.npy'.format(parquet_files[i])), temp)
+        # if i == 0:
+        #     arr = temp
+        # else:
+        #     arr = np.concatenate((arr, temp), axis = 0)
+    # np.save(os.path.join(output_path, 'train_landmarks.npy'), arr)
 
     # get interested landmark
 #     print(parquet.index.values.reshape(-1, 1).astype(int))
