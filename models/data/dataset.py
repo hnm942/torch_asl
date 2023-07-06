@@ -27,8 +27,6 @@ class AslDataset(data.Dataset):
         data = self.df.iloc[indices]
         return super().__getitem__(indices)
     
-# data_path = "/workspace/data/asl-short-dataset/train.csv"
-# data = pd.read_csv(data_path)
-# print(data.iloc[0])
+
 
 
