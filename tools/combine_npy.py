@@ -27,26 +27,20 @@ if __name__ == "__main__":
         sequences_list = file_df["sequence_id"].unique()    
         print("{}_{}".format(file, len(sequences_list)))
         for sequence_id in sequences_list:
-            row = file_df[file_df["sequence_id"] == sequence_id]
+            row = file_df[file_df["sequence_id"] == sequence_id].iloc[0]
             new_landmarks = landmarks[landmarks[ :, 0] == sequence_id]
             new_row = {"path": row["path"], "file_id": row["file_id"], "sequence_id": row["sequence_id"], 
                                     "participant_id": row["participant_id"], "phrase": row["phrase"], "length": new_landmarks.shape[0]}
             new_df = pd.concat([new_df, pd.DataFrame([new_row])], ignore_index=True)
+            # print(row["file_id"])
 
-
-            if i == 0:
-                # arr = new_landmarks
-                i = 1
-            else:
-                # arr = np.concatenate((arr, new_landmarks), axis = 0)
-                pass
+            # if i == 0:
+            #     arr = new_landmarks
+            #     i = 1
+            # else:
+            #     arr = np.concatenate((arr, new_landmarks), axis = 0)
+            #     pass
     new_df.to_csv("/workspace/data/asl_numpy_dataset/train.csv")    
-    # arr.      pass
-
-                
-    #     # find unique file id and check by list in that
-    #     if row["file_id"] not in name_list:
-    #         name_list.append(row["file_id"])
-    #         pass
+    # np.save(os.path.join(data_dir, "train_npy.npy"), arr)
 
         
