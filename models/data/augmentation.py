@@ -31,7 +31,8 @@ def random_interpolate(data, scale = (0.8, 1.5), shift = (-0.1, 0.1), p = 0.5):
         original_time = np.arange(num_frames) # num frames in 1 action pharse
         interpolate1D = interp1d(original_time, data, axis = 0, fill_value="extrapolate")
         new_time = np.linspace(0 + shift, len(data) - 1 + shift, int(round(num_frames * scale)), endpoint= True)
-        data = interp1d(new_time).astype(np.float32)
+        data = interpolate1D(new_time).astype(np.float32)
+        return data
 
 def random_noise(data, sigma, p = 0.5):
     if np.random.rand() < p:
