@@ -84,14 +84,14 @@ class AslDataset(data.Dataset):
     def __getitem__(self, indices):
         data = self.df.iloc[indices] # row in file csv
         landmark = self.get_landmarks(data) 
+        attention_mask = torch.zeros(self.max_len)
+        attention_mask[:len(landmark)] = 1
+        phrase = data["phrase"]
+        phrase = '#' + phrase + '$'
         
-        
-        return {}
+        phrase = torch.strings.bytes_split(phrase)
+        phrase = self.table.lookup(phrase)
+        phrase = torch.pad(phrase, paddings=[[0, 64 - torch.shape(phrase)[0]]])  
+        return {"inputs_embeds": landmark, "attention_mask": attention_mask}, int(phrase)
+
     
-config = ASLConfig(max_position_embeddings= 90)
-# create df in numpy
-npy_path = "/workspace/data/asl_numpy_dataset/train_landmarks/5414471.parquet.npy"
-df = pd.read_csv("/workspace/data/asl_numpy_dataset/train.csv")
-asl_dataset = AslDataset(df, npy_path, config)
-asl_dataset.__getitem__(0)
-# print(asl_dataset.__len__())
