@@ -5,12 +5,14 @@ from torch.utils import data
 from models.utils.config import ASLConfig
 from models.data import preprocess, augmentation, landmark_indices
 import torch.nn.functional as F
+import json
 
 class AslDataset(data.Dataset):
-    def __init__(self, df, npy_path, cfg, phase = "train"):
+    def __init__(self, df, npy_path, character_to_prediction_index_path, cfg, phase = "train"):
         self.df = df
         self.max_len = cfg.max_position_embeddings  - 1
         self.phase = phase
+        self.initStaticHashTable(character_to_prediction_index_path)
         #load npy:
         print("load data in: {}".format(npy_path))
         self.npy = np.load(npy_path)[:, 1:]
@@ -20,7 +22,7 @@ class AslDataset(data.Dataset):
         self.lip_landmarks = landmark_indices.LipPoints()
         self.dis_idx0, self.dis_idx1 = torch.where(torch.triu(torch.ones((21, 21)), 1) == 1)
         self.dis_idx2, self.dis_idx3 = torch.where(torch.triu(torch.ones((20, 20)), 1) == 1)
-
+        
     def normalize(self, data):
         ref = data.flatten()
         ref = data[~data.isnan()]
@@ -77,6 +79,25 @@ class AslDataset(data.Dataset):
         if len(landmarks) > self.max_len:
             landmarks = landmarks[np.linspace(0, len(landmarks), self.max_len, endpoint = False)]
         return landmarks
+
+    def initStaticHashTable(self, path):
+        with open(path, "r") as f:
+            self.char_to_num = json.load(f)
+            self.num_to_char = {j: i for i, j in self.char_to_num.items()}
+        char = list(self.char_to_num.keys())
+        num = list(self.char_to_num.values())
+        tensor_char = torch.tensor([self.char_to_num[c] for c in char])
+        tensor_num = torch.tensor(num)
+        default_value = torch.tensor(-1)
+        
+        self.table = torch.nn.EmbeddingBag(len(char), len(char), sparse=False)
+        self.table.weight.data.copy_(tensor_num)
+        self.table.register_buffer('offsets', torch.tensor([0, len(char)]))
+        
+        def lookup_fn(keys):
+            return self.table(keys)
+        
+        self.table.lookup = lookup_fn
 
     def __len__(self):
         return len(self.df)
