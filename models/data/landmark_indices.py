@@ -42,11 +42,19 @@ class LipPoints:
 class HandLandmark:
     def __init__(self):
         self.hand_points = np.arange(21)
-        self.hand_routes = [[0, *range(1, 5)],
-                            [0, *range(5, 9)],
-                            [0, *range(9, 13)],
-                            [0, *range(13, 17)]]
-        self.hand_angles = np.array(sum([[route[i:i+3] for i in range(len(route) - 1)] for route in self.hand_routes], []))
+        self.hand_routes =  [
+                        [0, *range(1, 5)], 
+                        [0, *range(5, 9)], 
+                        [0, *range(9, 13)], 
+                        [0, *range(13, 17)], 
+                        [0, *range(17, 21)],
+                        # [4,8,12,16,20],
+                        # [3,7,11,15,19],
+                        # [2,6,10,14,18],
+                        # [1,5,9,13,17],
+                    ]
+        self.hand_angles = np.array(sum([[route[i:i + 3] for i in range(len(route) - 2)] for route in self.hand_routes], []))
+
         self.hand_edges = np.array(sum([[route[i:i+1] for i in range(len(route) -1)] for route in self.hand_routes], []))
         self.hand_trees = sum([[np.array(route[i:]) for i in range(len(route))] for route in self.hand_routes], [])
 
