@@ -86,18 +86,17 @@ class AslDataset(data.Dataset):
             self.num_to_char = {j: i for i, j in self.char_to_num.items()}
         char = list(self.char_to_num.keys())
         num = list(self.char_to_num.values())
-        tensor_char = torch.tensor([self.char_to_num[c] for c in char])
         tensor_num = torch.tensor(num)
-        default_value = torch.tensor(-1)
         
         self.table = torch.nn.EmbeddingBag(len(char), len(char), sparse=False)
         self.table.weight.data.copy_(tensor_num)
         self.table.register_buffer('offsets', torch.tensor([0, len(char)]))
         
         def lookup_fn(keys):
-            return self.table(keys)
+            return torch.nn.functional.embedding(keys, self.table.weight)
         
         self.table.lookup = lookup_fn
+
 
     def __len__(self):
         return len(self.df)
@@ -110,9 +109,8 @@ class AslDataset(data.Dataset):
         phrase = data["phrase"]
         phrase = '#' + phrase + '$'
         
-        phrase = torch.strings.bytes_split(phrase)
+        phrase = torch.tensor([self.char_to_num[c] for c in phrase])
         phrase = self.table.lookup(phrase)
-        phrase = torch.pad(phrase, paddings=[[0, 64 - torch.shape(phrase)[0]]])  
-        return {"inputs_embeds": landmark, "attention_mask": attention_mask}, int(phrase)
-
+        phrase = torch.nn.functional.pad(phrase, pad=(0, 64 - phrase.shape[0]))
+        return {"inputs_embeds": landmark, "attention_mask": attention_mask}, phrase
     

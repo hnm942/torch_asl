@@ -57,14 +57,14 @@ def rotate_points(data, center, alpha):
     translate_points = (data - center).reshape(-1, 2)
     rotated_points = np.dot(translate_points, rotation_matrix.T).T.reshape(*data.shape)
     # convert to original coordinate
-    return rotate_points + center
+    return rotated_points + center
 
 # augment hand
 def random_hand_rotate(data, hand_landmark, degree = (-4, 4), joint_prob = 0.15, p = 0.5):
     if np.random.rand() < p:
         for tree in hand_landmark.hand_trees:
             if np.random.rand() < joint_prob:
-                alpha = np.random.rand(*degree)
+                alpha = np.random.uniform(*degree)
                 center = data[:, tree[0:1], :2] 
                 data[:, tree[1:], :2] = rotate_points(data[:, tree[1:], :2], center, alpha)
     return data

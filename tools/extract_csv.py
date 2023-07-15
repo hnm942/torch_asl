@@ -7,7 +7,7 @@ if __name__ == "__main__":
     data_dir = "/workspace/data/asl_numpy_dataset"
     npyparquet_dir= os.path.join(data_dir, "train_landmarks")
     npyparquet_list = os.listdir(npyparquet_dir)
-    csv_dir = "/workspace/data/asl-fingerspelling/train.csv"
+    csv_dir = "/workspace/data/asl-short-dataset/train.csv"
     df = pd.read_csv(csv_dir)
     # for npyparquet in npyparquet_list:
     #     parquet_path = os.path.join(npyparquet_dir, npyparquet)
@@ -39,7 +39,7 @@ if __name__ == "__main__":
             #     i = 1
             # else:
             #     arr = np.concatenate((arr, new_landmarks), axis = 0)
-            #     pass
+        break
     new_df.to_csv("/workspace/data/asl_numpy_dataset/train.csv")    
     # np.save(os.path.join(data_dir, "train_npy.npy"), arr)
 

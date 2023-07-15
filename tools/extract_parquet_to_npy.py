@@ -14,8 +14,8 @@ if __name__ == "__main__":
     df_path = "/workspace/data/asl-short-dataset/train.csv"
     df = pd.read_csv(df_path)
     # print(df.iloc[0])
-    data_path = "/workspace/data/asl-fingerspelling/train_landmarks"
-    parquet_files = os.listdir("/workspace/data/asl-fingerspelling/train_landmarks")
+    data_path = "/workspace/data/asl-short-dataset/train_landmarks"
+    parquet_files = os.listdir("/workspace/data/asl-short-dataset/train_landmarks")
     output_path = "/workspace/data/asl_numpy_dataset/train_landmarks"
     for i in range(len(parquet_files)):
         print(i)
