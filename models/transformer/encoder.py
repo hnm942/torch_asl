@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-nn.Module):
+class TransformerEncoder(nn.Module):
     def __init__(self, embed_dim, num_heads, feed_forward_dim, rate=0.1):
         super(TransformerEncoder, self).__init__()
         self.att = nn.MultiheadAttention(embed_dim, num_heads)
@@ -22,4 +22,3 @@ nn.Module):
         ffn_output = self.ffn(out1)
         ffn_output = self.dropout2(ffn_output)
         return self.layernorm2(out1 + ffn_output)
-

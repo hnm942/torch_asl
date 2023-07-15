@@ -19,25 +19,24 @@ class Transformer(nn.Module):
         num_classes=10,
     ):
         super(Transformer, self).__init__()
-        
-        self.num_layers_enc = num_layers_enc
-        self.num_layers_dec = num_layers_dec
-        self.target_maxlen = target_maxlen
-        self.num_classes = num_classes
 
-        self.encoder = nn.Sequential(
-            LandmarkEmbedding(num_hid=num_hid, maxlen=source_maxlen),
-            *[TransformerEncoder(embed_dim=num_hid, num_heads=num_head, feed_forward_dim=num_feed_forward) for _ in range(num_layers_enc)]
-        )
-
-        self.decoder = nn.Sequential(
-            TokenEmbedding(num_vocab=num_classes, maxlen=target_maxlen, num_hid=num_hid),
-            *[TransformerDecoder(embed_dim=num_hid, num_heads=num_head, feed_forward_dim=num_feed_forward) for _ in range(num_layers_dec)]
-        )
-
+        self.encoder = LandmarkEmbedding(num_hid, source_maxlen)
+        self.decoder = TokenEmbedding(num_classes, target_maxlen, num_hid)
+        self.transformer_encoders = nn.ModuleList([
+            TransformerEncoder(num_hid, num_head, num_feed_forward)
+            for _ in range(num_layers_enc)
+        ])
+        self.transformer_decoders = nn.ModuleList([
+            TransformerDecoder(num_hid, num_head, num_feed_forward)
+            for _ in range(num_layers_dec)
+        ])
         self.classifier = nn.Linear(num_hid, num_classes)
+
 
     def forward(self, source, target):
         enc_out = self.encoder(source)
         dec_out = self.decoder(target)
-        return self.classifier(dec_out)
+        enc_out = self.transformer(enc_out)
+        dec_out = self.transformer(dec_out)
+        return enc_out, dec_out
+

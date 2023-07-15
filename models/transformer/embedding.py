@@ -15,11 +15,13 @@ class TokenEmbedding(nn.Module):
         return x + positions
 
 class LandmarkEmbedding(nn.Module):
-    def __init__(self, num_hid, maxlen):
+    def __init__(self, embed_dim, maxlen):
         super(LandmarkEmbedding, self).__init__()
-        self.conv1 = nn.Conv1d(num_hid, num_hid, kernel_size=11, padding=5)
-        self.conv2 = nn.Conv1d(num_hid, num_hid, kernel_size=11, padding=5)
-        self.conv3 = nn.Conv1d(num_hid, num_hid, kernel_size=11, padding=5)
+        self.embed_dim = embed_dim
+        self.maxlen = maxlen
+        self.conv1 = nn.Conv1d(embed_dim, embed_dim, kernel_size=11, padding=5)
+        self.conv2 = nn.Conv1d(embed_dim, embed_dim, kernel_size=11, padding=5)
+        self.conv3 = nn.Conv1d(embed_dim, embed_dim, kernel_size=11, padding=5)
 
     def forward(self, x):
         x = x.permute(0, 2, 1)
@@ -28,3 +30,4 @@ class LandmarkEmbedding(nn.Module):
         x = self.conv3(x)
         x = x.permute(0, 2, 1)
         return x
+
