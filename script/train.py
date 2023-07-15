@@ -13,7 +13,7 @@ asl_dataset = AslDataset(df, npy_path, character_to_prediction_index_path, confi
 a, b = asl_dataset.__getitem__(0)
 model = Transformer()
 model.eval()
-model(a["inputs_embeds"])
+model((a["inputs_embeds"], b))
 
 
 # print(asl_dataset.__len__())

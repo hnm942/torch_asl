@@ -112,5 +112,9 @@ class AslDataset(data.Dataset):
         phrase = torch.tensor([self.char_to_num[c] for c in phrase])
         phrase = self.table.lookup(phrase)
         phrase = torch.nn.functional.pad(phrase, pad=(0, 64 - phrase.shape[0]))
+        landmark = landmark.unsqueeze(0)  # Thêm chiều mới ở đầu (dim=0)
+        phrase = phrase.unsqueeze(0)
+        phrase[1]
+        print(phrase.shape)
         return {"inputs_embeds": landmark, "attention_mask": attention_mask}, phrase
     
