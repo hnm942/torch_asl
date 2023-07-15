@@ -104,6 +104,7 @@ class AslDataset(data.Dataset):
     def __getitem__(self, indices):
         data = self.df.iloc[indices] # row in file csv
         landmark = self.get_landmarks(data) 
+        print(landmark.shape)
         attention_mask = torch.zeros(self.max_len)
         attention_mask[:len(landmark)] = 1
         phrase = data["phrase"]
