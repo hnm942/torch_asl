@@ -23,12 +23,13 @@ class TransformerDecoder(nn.Module):
         attn1_output = self.dropout1(attn1_output)
         out1 = self.layernorm1(target + attn1_output)
 
-        attn2_output, _ = self.att2(out1, enc_out, enc_out)
+        attn2_output, _ = self.att2(enc_out, out1, out1)
         attn2_output = self.dropout2(attn2_output)
         out2 = self.layernorm2(out1 + attn2_output)
 
         ffn_output = self.ffn(out2)
         ffn_output = self.dropout3(ffn_output)
         return self.layernorm3(out2 + ffn_output)
+
 
 

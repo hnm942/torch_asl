@@ -11,14 +11,14 @@ df = pd.read_csv("/workspace/data/asl_numpy_dataset/train.csv")
 character_to_prediction_index_path = "/workspace/data/asl_numpy_dataset/character_to_prediction_index.json"
 asl_dataset = AslDataset(df, npy_path, character_to_prediction_index_path, config)
 a, b = asl_dataset.__getitem__(0)
-num_hid = 64
+num_hid = 980
 num_head = 2
 num_feed_forward = 128
-source_maxlen = 100
-target_maxlen = 100
+source_maxlen = 128
+target_maxlen = 32
 num_layers_enc = 4
 num_layers_dec = 1
-num_classes = 10
+num_classes = 59
 
 model = Transformer(
     num_hid=num_hid,
@@ -31,7 +31,7 @@ model = Transformer(
     num_classes=num_classes
 )
 model.eval()
-model(a["inputs_embeds"], b)
+# model(a["inputs_embeds"], b)
 
 
 # print(asl_dataset.__len__())

@@ -75,6 +75,7 @@ class AslDataset(data.Dataset):
             lipsim.flatten(1),
             lsim.flatten(1),
         ], -1)
+        print("landmarks output shape: ", landmarks.shape)
         landmarks = torch.where(torch.isnan(landmarks), torch.tensor(0.0, dtype = torch.float32).to(landmarks), landmarks)
         if len(landmarks) > self.max_len:
             landmarks = landmarks[np.linspace(0, len(landmarks), self.max_len, endpoint = False)]
@@ -105,13 +106,18 @@ class AslDataset(data.Dataset):
         data = self.df.iloc[indices] # row in file csv
         landmark = self.get_landmarks(data) 
         print(landmark.shape)
+        landmark = landmark.unsqueeze(0)
         attention_mask = torch.zeros(self.max_len)
         attention_mask[:len(landmark)] = 1
         phrase = data["phrase"]
         phrase = '#' + phrase + '$'
         
         phrase = torch.tensor([self.char_to_num[c] for c in phrase])
-        phrase = self.table.lookup(phrase)
-        phrase = torch.nn.functional.pad(phrase, pad=(0, 64 - phrase.shape[0]))
+        print("1: ", phrase.shape)
+        # phrase = self.table.lookup(phrase)
+
+        phrase = torch.nn.functional.pad(phrase, pad=(0, 32 - phrase.shape[0]))
+        print("2: ", phrase.shape, " - ", phrase)
+        phrase = phrase.unsqueeze(0)
         return {"inputs_embeds": landmark, "attention_mask": attention_mask}, phrase
     

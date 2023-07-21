@@ -8,8 +8,13 @@ class TokenEmbedding(nn.Module):
         self.pos_emb = nn.Embedding(maxlen, num_hid)
 
     def forward(self, x):
-        seq_len = x.size(1)
+        batch_size, seq_len = x.size()
+        # x = x.view(-1)
+        print("[target embedding] 1: {}".format(x.shape))
         x = self.emb(x)
+        # x = x.view(batch_size, seq_len)
+        print("[target embedding] 2: {}".format(x.shape))
+
         positions = torch.arange(seq_len, device=x.device).unsqueeze(0)
         positions = self.pos_emb(positions)
         return x + positions
