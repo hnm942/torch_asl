@@ -33,6 +33,7 @@ class AslDataset(data.Dataset):
         landmarks = self.npy[data.idx:data.idx + data.length]
         print("before augmentation and preprocessing: ", landmarks.shape)
         # augumentation if training
+       
         if self.phase == "train":
             # random interpolation
             landmarks = augmentation.aug2(landmarks)
@@ -42,8 +43,10 @@ class AslDataset(data.Dataset):
             landmarks[:,-21: ] = augmentation.random_hand_rotate(landmarks[:, -21:], self.hand_landmarks, joint_prob = 0.2, p = 0.8)
         # convert data to torch
         landmarks = torch.tensor(landmarks.astype(np.float32))
+        print("convert data to torch shape: ", landmarks.shape)
         # sereparate part of body
         lip, lhand, rhand = landmarks[:, :-42], landmarks[:, -42:-21], landmarks[:, -21:]
+        print("lip shape: {}, lhand shape: {}, rhand shape: {}".format(lip.shape, lhand.shape, rhand.shape))
         if self.phase == "train":
             if np.random.rand() < 0.5:
                 lhand, rhand = rhand, lhand
@@ -78,7 +81,10 @@ class AslDataset(data.Dataset):
         print("landmarks output shape: ", landmarks.shape)
         landmarks = torch.where(torch.isnan(landmarks), torch.tensor(0.0, dtype = torch.float32).to(landmarks), landmarks)
         if len(landmarks) > self.max_len:
-            landmarks = landmarks[np.linspace(0, len(landmarks), self.max_len, endpoint = False)]
+            print("before use max len: ",landmarks.shape)
+
+            landmarks = landmarks[np.linspace(0, len(landmarks), self.max_len + 1, endpoint = False)]
+            print("after use max len: ",landmarks.shape)
         return landmarks
 
     def initStaticHashTable(self, path):

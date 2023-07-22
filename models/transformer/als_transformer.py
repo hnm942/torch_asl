@@ -42,4 +42,3 @@ class Transformer(nn.Module):
             print(enc_out.shape, dec_out.shape)
             dec_out = decoder(enc_out, dec_out)
         return enc_out, dec_out
-
