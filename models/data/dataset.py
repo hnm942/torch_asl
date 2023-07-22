@@ -113,11 +113,11 @@ class AslDataset(data.Dataset):
         phrase = '#' + phrase + '$'
         
         phrase = torch.tensor([self.char_to_num[c] for c in phrase])
-        print("1: ", phrase.shape)
+        # print("1: ", phrase.shape)
         # phrase = self.table.lookup(phrase)
 
         phrase = torch.nn.functional.pad(phrase, pad=(0, 32 - phrase.shape[0]))
-        print("2: ", phrase.shape, " - ", phrase)
+        # print("2: ", phrase.shape, " - ", phrase)
         phrase = phrase.unsqueeze(0)
         return {"inputs_embeds": landmark, "attention_mask": attention_mask}, phrase
     

@@ -1,5 +1,12 @@
 import numpy as np
 import pandas as pd
+# for develop
+import sys
+
+
+sys.path.append("/workspace/src/torch_asl")
+
+
 from models.utils.config import ASLConfig
 from models.data.dataset import AslDataset
 from models.transformer.als_transformer import Transformer
