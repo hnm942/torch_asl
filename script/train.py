@@ -22,7 +22,7 @@ num_hid = 980
 num_head = 2
 num_feed_forward = 96
 source_maxlen = 96
-target_maxlen = 32
+target_maxlen = 96
 num_layers_enc = 4
 num_layers_dec = 1
 num_classes = 59
@@ -38,7 +38,7 @@ model = Transformer(
     num_classes=num_classes
 )
 model.eval()
-model(a["inputs_embeds"], b)
+print(model(a["inputs_embeds"], b)[0].shape)
 
 
 # print(asl_dataset.__len__())

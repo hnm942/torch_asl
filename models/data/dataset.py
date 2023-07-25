@@ -59,16 +59,26 @@ class AslDataset(data.Dataset):
         # combine it together
         landmarks = self.normalize(torch.cat([lip, lhand], 1))
         # Motion features consist of future motion and history motion,
+        print("[dataloader] offset shape", landmarks[-1:].shape)
         offset = torch.zeros_like(landmarks[-1:])
         movement = landmarks[:-1] - landmarks[1:]
         dpos = torch.cat([movement, offset])
         rdpos = torch.cat([offset, -movement])
+
         ld = torch.linalg.vector_norm(lhand[:,self.dis_idx0,:2] - lhand[:,self.dis_idx1,:2], dim = -1)
         lipd = torch.linalg.vector_norm(lip[:,self.dis_idx2,:2] - lip[:,self.dis_idx3,:2], dim = -1)
         lsim = F.cosine_similarity(lhand[:,self.hand_landmarks.hand_angles[:,0]] - lhand[:,self.hand_landmarks.hand_angles[:,1]],
                                    lhand[:,self.hand_landmarks.hand_angles[:,2]] - lhand[:,self.hand_landmarks.hand_angles[:,1]], -1)
         lipsim = F.cosine_similarity(lip[:,self.lip_landmarks.flatten_lip_angles[:,0]] - lip[:,self.lip_landmarks.flatten_lip_angles[:,1]],
                                      lip[:,self.lip_landmarks.flatten_lip_angles[:,2]] - lip[:,self.lip_landmarks.flatten_lip_angles[:,1]], -1)
+        
+        print("[dataloader] landmark shape", landmarks.shape)
+        print("[dataloader] dpos shape", dpos.shape)
+        print("[dataloader] rdpos shape", rdpos.shape)
+        print("[dataloader] ld shape", ld.shape)
+        print("[dataloader] lipd shape", lipd.shape)
+        print("[dataloader] lsim shape", lsim.shape)
+        print("[dataloader] lipsim shape", lipsim.shape)
         landmarks = torch.cat([
             landmarks.flatten(1),
             dpos.flatten(1),
@@ -122,7 +132,7 @@ class AslDataset(data.Dataset):
         # print("1: ", phrase.shape)
         # phrase = self.table.lookup(phrase)
 
-        phrase = torch.nn.functional.pad(phrase, pad=(0, 32 - phrase.shape[0]))
+        phrase = torch.nn.functional.pad(phrase, pad=(0, 96 - phrase.shape[0]))
         # print("2: ", phrase.shape, " - ", phrase)
         phrase = phrase.unsqueeze(0)
         return {"inputs_embeds": landmark, "attention_mask": attention_mask}, phrase
