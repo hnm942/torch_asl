@@ -41,4 +41,4 @@ class Transformer(nn.Module):
         for decoder in self.transformer_decoders:
             print(enc_out.shape, dec_out.shape)
             dec_out = decoder(enc_out, dec_out)
-        return enc_out, dec_out
+        return self.classifier(dec_out)
