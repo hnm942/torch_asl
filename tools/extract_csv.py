@@ -39,7 +39,7 @@ if __name__ == "__main__":
             #     i = 1
             # else:
             #     arr = np.concatenate((arr, new_landmarks), axis = 0)
-        break
+        # break
     new_df.to_csv("/workspace/data/asl_numpy_dataset/train.csv")    
     # np.save(os.path.join(data_dir, "train_npy.npy"), arr)
 

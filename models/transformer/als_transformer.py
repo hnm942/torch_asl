@@ -31,7 +31,7 @@ class Transformer(nn.Module):
             for _ in range(num_layers_dec)
         ])
         self.classifier = nn.Linear(num_hid, num_classes)
-
+        self.loss_metric = nn.CrossEntropyLoss()  
 
     def forward(self, source, target):
         enc_out = self.source_emb(source)
@@ -39,6 +39,34 @@ class Transformer(nn.Module):
         for encoder in self.transformer_encoders:
             enc_out = encoder(enc_out)
         for decoder in self.transformer_decoders:
-            print(enc_out.shape, dec_out.shape)
+            # print(enc_out.shape, dec_out.shape)
             dec_out = decoder(enc_out, dec_out)
         return self.classifier(dec_out)
+    
+    def training_step(self, batch):
+        """Processes one batch inside model.fit()."""
+        source = batch[0]
+        target = batch[1]
+        dec_input = target[:, :-1]
+        dec_target = target[:, 1:]
+        preds = self([source, dec_input])
+        one_hot = torch.nn.functional.one_hot(dec_target, num_classes=self.num_classes)
+        mask = dec_target != 0
+        loss = self.loss_metric(preds, one_hot.float())
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        self.loss_metric.update_state(loss.item())
+        return {"loss": self.loss_metric.result()}
+
+    def validation_step(self, batch):
+        source = batch[0]
+        target = batch[1]
+        dec_input = target[:, :-1]
+        dec_target = target[:, 1:]
+        preds = self([source, dec_input])
+        one_hot = torch.nn.functional.one_hot(dec_target, num_classes=self.num_classes)
+        mask = dec_target != 0
+        loss = self.loss_metric(preds, one_hot.float())
+        self.loss_metric.update_state(loss.item())
+        return {"loss": self.loss_metric.result()}

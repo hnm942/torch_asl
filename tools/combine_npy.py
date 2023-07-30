@@ -12,7 +12,8 @@ if __name__ == "__main__":
     file_list = df["file_id"].unique()
     new_df = pd.DataFrame(columns=(df.columns.append(pd.Index(["length"]))))
     start_array = True
-    for i in range(65, len(file_list)):
+    print(len(file_list))
+    for i in range(0, len(file_list)):
         file = file_list[i]
         # get npy landmark
         file_df = df[df["file_id"] == file]
@@ -30,6 +31,6 @@ if __name__ == "__main__":
                 start_array = False
             else:
                 arr = np.concatenate((arr, new_landmarks), axis = 0)
-        if i % 5 == 4 or i == len(file_list) - 1:
+        if i % 3 == 2 or i == len(file_list) - 1:
             np.save(os.path.join(npyparquet_dir, "temp", f"{i}.npy"), arr)
             start_array = True
