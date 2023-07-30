@@ -14,8 +14,9 @@ from torch.utils.data import DataLoader
 
 config = ASLConfig(max_position_embeddings= 96)
 # create df in numpy
-npy_path = "/workspace/data/asl_numpy_dataset/train_landmarks/5414471.parquet.npy"
+npy_path = "/workspace/data/asl_numpy_dataset/train_landmarks/temp/train_npy.npy"
 df = pd.read_csv("/workspace/data/asl_numpy_dataset/train.csv")
+print("len data: ", df.shape[0])
 character_to_prediction_index_path = "/workspace/data/asl_numpy_dataset/character_to_prediction_index.json"
 asl_dataset = AslDataset(df, npy_path, character_to_prediction_index_path, config)
 a, b = asl_dataset.__getitem__(0)
@@ -29,7 +30,7 @@ num_layers_dec = 1
 num_classes = 59
 learning_rate = 0.01
 
-train_loader = DataLoader(asl_dataset, batch_size=1, shuffle = True, drop_last=True)
+train_loader = DataLoader(asl_dataset, batch_size=32, shuffle = True, drop_last=True)
 
 model = Transformer(
     num_hid=num_hid,
@@ -52,26 +53,25 @@ num_epochs = 10
 #     total_loss = 0.0
 #     total_correct = 0.
 i = 0
-print()
+print(train_loader.__len__())
 for batch in train_loader:
     print(i)
     i = i + 1
 
+# # for epoch in range(num_epochs):
+# #     model.train()
+# #     total_loss = 0
+# #     for batch in train_loader:
+# #         optimizer.zero_grad()
+# #         outputs = model.training_step(batch)
+# #         loss = outputs["loss"]
+# #         loss.backward()
+# #         optimizer.step()
+# #         total_loss += loss.item()
+# #     avg_loss = total_loss / len(train_loader)
+# #     print(f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss}")
 
-# for epoch in range(num_epochs):
-#     model.train()
-#     total_loss = 0
-#     for batch in train_loader:
-#         optimizer.zero_grad()
-#         outputs = model.training_step(batch)
-#         loss = outputs["loss"]
-#         loss.backward()
-#         optimizer.step()
-#         total_loss += loss.item()
-#     avg_loss = total_loss / len(train_loader)
-#     print(f"Epoch {epoch+1}/{num_epochs}, Average Loss: {avg_loss}")
-
-# print(model(a["inputs_embeds"], b)[0].shape)
+# # print(model(a["inputs_embeds"], b)[0].shape)
 
 
-# # print(asl_dataset.__len__())
+# # # print(asl_dataset.__len__())
