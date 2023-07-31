@@ -48,19 +48,22 @@ model = Transformer(
     num_classes=num_classes
 )
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-loss_fn = torch.nn.CrossEntropyLoss()
+loss_fn = torch.nn.CrossEntropyLoss(ignore_index=0)
 for epoch in range(num_epochs):
     total_loss = 0.0
     total_correct = 0
-    model.train()
+    # model.train()
     for j, batch in enumerate(train_loader):
         print("batch {}|{}".format(j, epoch))
         input, phrase = batch
+        phrase = phrase.long()
         optimizer.zero_grad()
         # forward pass
         outputs = model(input['inputs_embeds'], phrase)
-        one_hot = torch.nn.functional.one_hot(phrase, num_classes= 59).float()
-        loss = loss_fn(outputs, one_hot)
+        print("output: ", outputs.shape)
+        one_hot = torch.nn.functional.one_hot(phrase, num_classes= 59)
+        print("one hot: ", one_hot.shape)
+        loss = loss_fn(outputs.transpose(1, 2), phrase)
         # backpropagation and optimization
         loss.backward()
         optimizer.step()
