@@ -6,16 +6,18 @@ from models.utils.config import ASLConfig
 from models.data import preprocess, augmentation, landmark_indices
 import torch.nn.functional as F
 import json
+import dask.array as da
 
 class AslDataset(data.Dataset):
     def __init__(self, df, npy_path, character_to_prediction_index_path, cfg, phase = "train"):
         self.df = df
-        self.max_len = cfg.max_position_embeddings  - 1
+        self.max_len = cfg.max_position_embeddings 
         self.phase = phase
         self.initStaticHashTable(character_to_prediction_index_path)
         #load npy:
         # print("load data in: {}".format(npy_path))
-        self.npy = np.load(npy_path)[:, 1:]
+        self.npy = da.from_npy_stack(npy_path)[:, 1:]
+        # print("load npy from dash: ", self.npy.shape)
         self.npy = self.npy.reshape(-1, 82, 3)
         # print("load data successful with shape {}".format(self.npy.shape))
         self.hand_landmarks = landmark_indices.HandLandmark()
@@ -30,13 +32,15 @@ class AslDataset(data.Dataset):
         return (data - mu) / std
     
     def get_landmarks(self, data):
-        landmarks = self.npy[data.idx:data.idx + data.length]
+        landmarks = self.npy[data.idx:data.idx + data.length].compute()
+        # print("load landmarks with shape: ", landmarks.shape)
         # print("before augmentation and preprocessing: ", landmarks.shape)
         # augumentation if training
        
         if self.phase == "train":
             # random interpolation
             landmarks = augmentation.aug2(landmarks)
+
             # print("after interpolation " ,landmarks.shape)
             # random rotate left hand and right hand
             landmarks[:, -42:-21] = augmentation.random_hand_rotate(landmarks[:, -42:-21], self.hand_landmarks, joint_prob = 0.2, p = 0.8)
@@ -92,7 +96,7 @@ class AslDataset(data.Dataset):
         landmarks = torch.where(torch.isnan(landmarks), torch.tensor(0.0, dtype = torch.float32).to(landmarks), landmarks)
         if len(landmarks) > self.max_len:
             # print("before use max len: ",landmarks.shape)
-            landmarks = landmarks[np.linspace(0, len(landmarks), self.max_len + 1, endpoint = False)]
+            landmarks = landmarks[np.linspace(0, len(landmarks), self.max_len, endpoint = False)]
             # print("after use max len: ",landmarks.shape)
         return landmarks
 
@@ -120,19 +124,15 @@ class AslDataset(data.Dataset):
     def __getitem__(self, indices):
         data = self.df.iloc[indices] # row in file csv
         landmark = self.get_landmarks(data) 
-        # print(landmark.shape)
-        # landmark = landmark.unsqueeze(0)
+        if landmark.shape[0] < self.max_len:
+            temp = torch.zeros((self.max_len, landmark.shape[1]))
+            temp[:landmark.shape[0], :] = landmark
+            landmark = temp
         attention_mask = torch.zeros(self.max_len)
         attention_mask[:len(landmark)] = 1
         phrase = data["phrase"]
         phrase = '#' + phrase + '$'
-        
         phrase = torch.tensor([self.char_to_num[c] for c in phrase])
-        # print("1: ", phrase.shape)
-        # phrase = self.table.lookup(phrase)
-
         phrase = torch.nn.functional.pad(phrase, pad=(0, 96 - phrase.shape[0]))
-        # print("2: ", phrase.shape, " - ", phrase)
-        # phrase = phrase.unsqueeze(0)
         return {"inputs_embeds": landmark, "attention_mask": attention_mask}, phrase
     
