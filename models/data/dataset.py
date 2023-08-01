@@ -9,7 +9,7 @@ import json
 import dask.array as da
 
 class AslDataset(data.Dataset):
-    def __init__(self, df, npy_path, character_to_prediction_index_path, cfg, phase = "train"):
+    def __init__(self, df, npy_path, character_to_prediction_index_path, cfg, device, phase = "train"):
         self.df = df
         self.max_len = cfg.max_position_embeddings 
         self.phase = phase
@@ -24,6 +24,7 @@ class AslDataset(data.Dataset):
         self.lip_landmarks = landmark_indices.LipPoints()
         self.dis_idx0, self.dis_idx1 = torch.where(torch.triu(torch.ones((21, 21)), 1) == 1)
         self.dis_idx2, self.dis_idx3 = torch.where(torch.triu(torch.ones((20, 20)), 1) == 1)
+        self.device = device
         
     def normalize(self, data):
         ref = data.flatten()
@@ -32,11 +33,11 @@ class AslDataset(data.Dataset):
         return (data - mu) / std
     
     def get_landmarks(self, data):
-        landmarks = self.npy[data.idx:data.idx + data.length].compute()
+        landmarks = self.npy[data.idx:data.idx + data.length].compute().copy()
         # print("load landmarks with shape: ", landmarks.shape)
         # print("before augmentation and preprocessing: ", landmarks.shape)
         # augumentation if training
-       
+        # print(landmarks.shape)
         if self.phase == "train":
             # random interpolation
             landmarks = augmentation.aug2(landmarks)
@@ -134,5 +135,8 @@ class AslDataset(data.Dataset):
         phrase = '#' + phrase + '$'
         phrase = torch.tensor([self.char_to_num[c] for c in phrase])
         phrase = torch.nn.functional.pad(phrase, pad=(0, 96 - phrase.shape[0]))
+        landmark = landmark.to(self.device)
+        attention_mask = attention_mask.to(self.device)
+        phrase = phrase.to(self.device)
         return {"inputs_embeds": landmark, "attention_mask": attention_mask}, phrase
     

@@ -11,14 +11,18 @@ from models.utils.config import ASLConfig
 from models.data.dataset import AslDataset
 from models.transformer.als_transformer import Transformer
 from torch.utils.data import DataLoader
+from torch.utils.data import random_split
 
 config = ASLConfig(max_position_embeddings= 96)
 # create df in numpy
 npy_path = "/workspace/data/asl_numpy_dataset/train_landmarks/train_npy"
 df = pd.read_csv("/workspace/data/asl_numpy_dataset/train.csv")
-print("len data: ", df.shape[0])
+len_data = df.shape[0]
+split = 0.3
+val_size = int(0.3 * len_data)
+train_size = len_data - val_size
+train_df, val_df = random_split(df, [train_size, val_size])
 character_to_prediction_index_path = "/workspace/data/asl_numpy_dataset/character_to_prediction_index.json"
-asl_dataset = AslDataset(df, npy_path, character_to_prediction_index_path, config)
 # a, b = asl_dataset.__getitem__(0)
 num_hid = 980
 num_head = 2
@@ -30,12 +34,17 @@ num_layers_dec = 1
 num_classes = 59
 learning_rate = 0.01
 num_epochs = 100
-train_loader = DataLoader(asl_dataset, batch_size=32, shuffle = True, drop_last=True)
 # print(train_loader.__len__())
 # i = 0
 # for i, batch in enumerate(train_loader):
 #     print(i)
 #     # i = i + 1
+device = torch.device("cuda:0")
+
+train_dataset = AslDataset(train_df.dataset, npy_path, character_to_prediction_index_path, config, device)
+val_dataset = AslDataset(val_df.dataset, npy_path, character_to_prediction_index_path, config, device)
+train_loader = DataLoader(train_dataset , batch_size = 64, shuffle = True, drop_last = True)
+val_loader = DataLoader(val_dataset, batch_size = 32, shuffle = True, drop_last = True)
 
 model = Transformer(
     num_hid=num_hid,
@@ -47,12 +56,13 @@ model = Transformer(
     num_layers_dec=num_layers_dec,
     num_classes=num_classes
 )
+model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=0)
 for epoch in range(num_epochs):
     total_loss = 0.0
     total_correct = 0
-    # model.train()
+    model.train()
     for j, batch in enumerate(train_loader):
         print("batch {}|{}".format(j, epoch))
         input, phrase = batch
@@ -60,9 +70,9 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
         # forward pass
         outputs = model(input['inputs_embeds'], phrase)
-        print("output: ", outputs.shape)
+        # print("output: ", outputs.shape)
         one_hot = torch.nn.functional.one_hot(phrase, num_classes= 59)
-        print("one hot: ", one_hot.shape)
+        # print("one hot: ", one_hot.shape)
         loss = loss_fn(outputs.transpose(1, 2), phrase)
         # backpropagation and optimization
         loss.backward()
@@ -71,6 +81,27 @@ for epoch in range(num_epochs):
         print(loss)
     avg_loss = total_loss / len(train_loader.dataset)
     print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {avg_loss:.4f}")
+    model.eval()
+    with torch.no_grad():
+        val_loss = 0.
+        for j, batch in enumerate(val_loader):
+            input, phrase = batch
+            phrase = phrase.long()
+            loss = loss_fn(outputs.transpose(1, 2), phrase)
+            val_loss += loss.item()
+    val_avg_loss = val_loss / len(val_loader.dataset)
+    print(f"Test Accuracy: {val_avg_loss:.4f}")
+    # save checkpoint
+    checkpoint = {
+        'epoch': epoch + 1,
+        'state_dict': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'loss': avg_loss,
+        'val_loss': val_avg_loss
+    }
+    checkpoint_path = f"/workspace/src/torch_asl/checkpoints/checkpoint_epoch_{epoch+1}.pth"
+    torch.save(checkpoint, checkpoint_path)
+    print(f"Checkpoint saved at {checkpoint_path}")
 
     # accuracy = total_correct / len(train_loader.dataset)
     # model.eval()
