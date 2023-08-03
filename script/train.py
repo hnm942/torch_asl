@@ -3,6 +3,7 @@ import pandas as pd
 # for develop
 import sys
 import torch
+from tqdm import tqdm
 
 sys.path.append("/workspace/src/torch_asl")
 
@@ -17,6 +18,8 @@ config = ASLConfig(max_position_embeddings= 96)
 # create df in numpy
 npy_path = "/workspace/data/asl_numpy_dataset/train_landmarks/train_npy"
 df = pd.read_csv("/workspace/data/asl_numpy_dataset/train.csv")
+
+df = df[df['length'] >= 50]
 len_data = df.shape[0]
 split = 0.3
 val_size = int(0.3 * len_data)
@@ -33,7 +36,7 @@ num_layers_enc = 4
 num_layers_dec = 1
 num_classes = 59
 learning_rate = 0.01
-num_epochs = 100
+num_epochs = 50
 # print(train_loader.__len__())
 # i = 0
 # for i, batch in enumerate(train_loader):
@@ -63,8 +66,9 @@ for epoch in range(num_epochs):
     total_loss = 0.0
     total_correct = 0
     model.train()
-    for j, batch in enumerate(train_loader):
-        print("batch {}|{}".format(j, epoch))
+    print("Epoch j: ", epoch)
+    for j, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch}")):
+        # print("batch {}|{}".format(j, epoch))
         input, phrase = batch
         phrase = phrase.long()
         optimizer.zero_grad()
@@ -78,19 +82,20 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
-        print(loss)
+        # print(loss)
     avg_loss = total_loss / len(train_loader.dataset)
     print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {avg_loss:.4f}")
     model.eval()
     with torch.no_grad():
         val_loss = 0.
-        for j, batch in enumerate(val_loader):
+        for j, batch in enumerate(tqdm(val_loader, desc=f"Epoch {epoch}")):
             input, phrase = batch
             phrase = phrase.long()
+            outputs = model(input['inputs_embeds'], phrase)
             loss = loss_fn(outputs.transpose(1, 2), phrase)
             val_loss += loss.item()
     val_avg_loss = val_loss / len(val_loader.dataset)
-    print(f"Test Accuracy: {val_avg_loss:.4f}")
+    # print(f"Test Accuracy: {val_avg_loss:.4f}")
     # save checkpoint
     checkpoint = {
         'epoch': epoch + 1,
@@ -103,6 +108,6 @@ for epoch in range(num_epochs):
     torch.save(checkpoint, checkpoint_path)
     print(f"Checkpoint saved at {checkpoint_path}")
 
-    # accuracy = total_correct / len(train_loader.dataset)
-    # model.eval()
+    accuracy = total_correct / len(train_loader.dataset)
+    model.eval()
 

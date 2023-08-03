@@ -30,7 +30,12 @@ def random_interpolate(data, scale = (0.8, 1.5), shift = (-0.1, 0.1), p = 0.5):
         shift = np.random.uniform(*shift)
         # get original time 
         original_time = np.arange(num_frames) # num frames in 1 action pharse
-        interpolate1D = interp1d(original_time, data, axis = 0, fill_value="extrapolate")
+        try:
+            interpolate1D = interp1d(original_time, data, axis = 0, fill_value="extrapolate")
+        except Exception as e:
+            print(e)
+            print(original_time.shape)
+            print(data.shape)
         new_time = np.linspace(0 + shift, len(data) - 1 + shift, int(round(num_frames * scale)), endpoint= True)
         data = interpolate1D(new_time).astype(np.float32)
         # print("[random_interpolate] num frames: {}")
