@@ -1,36 +1,53 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class TransformerDecoder(nn.Module):
-    def __init__(self, embed_dim, num_heads, feed_forward_dim, rate=0.1):
-        super(TransformerDecoder, self).__init__()
-        self.att1 = nn.MultiheadAttention(embed_dim, num_heads)
-        self.att2 = nn.MultiheadAttention(embed_dim, num_heads)
+    def __init__(self, embed_dim, num_heads, feed_forward_dim, device, dropout_rate=0.1):
+        super().__init__()
+        self.device = device
+        self.num_heads = num_heads
+        self.layernorm1 = nn.LayerNorm(normalized_shape=embed_dim, eps=1e-6)
+        self.layernorm2 = nn.LayerNorm(normalized_shape=embed_dim, eps=1e-6)
+        self.layernorm3 = nn.LayerNorm(normalized_shape=embed_dim, eps=1e-6)
+        self.self_att = nn.MultiheadAttention(
+            embed_dim=embed_dim, num_heads=num_heads, dropout=dropout_rate, batch_first= True
+        )
+        self.enc_att = nn.MultiheadAttention(
+            embed_dim=embed_dim, num_heads=num_heads, dropout=dropout_rate, batch_first= True
+        )
+        self.self_dropout = nn.Dropout(p=dropout_rate)
+        self.enc_dropout = nn.Dropout(p=dropout_rate)
+        self.ffn_dropout = nn.Dropout(p=dropout_rate)
         self.ffn = nn.Sequential(
             nn.Linear(embed_dim, feed_forward_dim),
             nn.ReLU(),
             nn.Linear(feed_forward_dim, embed_dim)
         )
-        self.layernorm1 = nn.LayerNorm(embed_dim, eps=1e-6)
-        self.layernorm2 = nn.LayerNorm(embed_dim, eps=1e-6)
-        self.layernorm3 = nn.LayerNorm(embed_dim, eps=1e-6)
-        self.dropout1 = nn.Dropout(rate)
-        self.dropout2 = nn.Dropout(rate)
-        self.dropout3 = nn.Dropout(rate)
+
+    def causal_attention_mask(self, batch_size, n_dest, n_src, dtype):
+        i = torch.arange(n_dest, device = self.device)[:, None]
+        j = torch.arange(n_src, device = self.device)
+        mask = i >= j - n_src + n_dest
+        mask = mask.to(dtype)
+        # print(dtype)
+        mask = mask.view(1, n_dest, n_src)
+        mult = torch.tensor([batch_size, 1, 1], dtype=int, device = self.device)
+        return mask.repeat(*mult)
 
     def forward(self, enc_out, target):
-        attn1_output, _ = self.att1(target, target, target)
-        attn1_output = self.dropout1(attn1_output)
-        out1 = self.layernorm1(target + attn1_output)
-        # print("[decoder output] out1: target {}. attn1: {}".format(target.shape, out1.shape))
-
-        attn2_output, _ = self.att2(enc_out, out1, out1)
-        attn2_output = self.dropout2(attn2_output)
-        out2 = self.layernorm2(out1 + attn2_output)
-
-        ffn_output = self.ffn(out2)
-        ffn_output = self.dropout3(ffn_output)
-        return self.layernorm3(out2 + ffn_output)
-
+        input_shape = target.size()
+        batch_size = input_shape[0]
+        seq_len = input_shape[1]
+        causal_mask = self.causal_attention_mask(batch_size * self.num_heads, seq_len, seq_len, target.dtype)
+        # causal_mask = causal_mask.to(self.device)
+        # print("[decode] causal_mask: ",causal_mask.shape)
+        target_att, _ = self.self_att(target, target, target, attn_mask=causal_mask)
+        target_norm = self.layernorm1(target + self.self_dropout(target_att))
+        enc_out, _ = self.enc_att(target_norm, enc_out, enc_out)
+        enc_out_norm = self.layernorm2(enc_out + self.enc_dropout(enc_out))
+        ffn_out = self.ffn(enc_out_norm)
+        ffn_out_norm = self.layernorm3(enc_out_norm + self.ffn_dropout(ffn_out))
+        return ffn_out_norm
 
 

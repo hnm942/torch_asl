@@ -22,14 +22,14 @@ class Transformer(nn.Module):
         super(Transformer, self).__init__()
         self.device = device
         self.target_maxlen = target_maxlen
-        self.source_emb = LandmarkEmbedding(num_hid, source_maxlen)
-        self.target_emb = TokenEmbedding(num_classes, target_maxlen, num_hid)
+        self.source_emb = LandmarkEmbedding(num_hid, source_maxlen, self.device)
+        self.target_emb = TokenEmbedding(num_classes, target_maxlen, num_hid, self.device)
         self.transformer_encoders = nn.ModuleList([
-            TransformerEncoder(num_hid, num_head, num_feed_forward)
+            TransformerEncoder(num_hid, num_head, num_feed_forward, self.device)
             for _ in range(num_layers_enc)
         ])
         self.transformer_decoders = nn.ModuleList([
-            TransformerDecoder(num_hid, num_head, num_feed_forward)
+            TransformerDecoder(num_hid, num_head, num_feed_forward, self.device)
             for _ in range(num_layers_dec)
         ])
         self.classifier = nn.Linear(num_hid, num_classes)
@@ -43,7 +43,7 @@ class Transformer(nn.Module):
 
     def decoder(self, enc_out, target):
         dec_out = self.target_emb(target)
-        print(dec_out.shape)
+        # print(dec_out.shape)
         for decoder in self.transformer_decoders:
             # print(enc_out.shape, dec_out.shape)
             dec_out = decoder(enc_out, dec_out)

@@ -14,7 +14,7 @@ from models.transformer.als_transformer import Transformer
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
 
-config = ASLConfig(max_position_embeddings= 96)
+config = ASLConfig(max_position_embeddings= 64)
 # create df in numpy
 npy_path = "/workspace/data/asl_numpy_dataset/train_landmarks/train_npy"
 df = pd.read_csv("/workspace/data/asl_numpy_dataset/train.csv")
@@ -42,7 +42,7 @@ num_epochs = 50
 # for i, batch in enumerate(train_loader):
 #     print(i)
 #     # i = i + 1
-device = torch.device("cuda:0")
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 train_dataset = AslDataset(train_df.dataset, npy_path, character_to_prediction_index_path, config, device)
 val_dataset = AslDataset(val_df.dataset, npy_path, character_to_prediction_index_path, config, device)
@@ -57,7 +57,8 @@ model = Transformer(
     target_maxlen=target_maxlen,
     num_layers_enc=num_layers_enc,
     num_layers_dec=num_layers_dec,
-    num_classes=num_classes
+    num_classes=num_classes, 
+    device = device
 )
 model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)

@@ -2,9 +2,10 @@ import torch
 import torch.nn as nn
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, embed_dim, num_heads, feed_forward_dim, rate=0.1):
+    def __init__(self, embed_dim, num_heads, feed_forward_dim, device, rate=0.1):
         super(TransformerEncoder, self).__init__()
-        self.att = nn.MultiheadAttention(embed_dim, num_heads)
+        self.device = device
+        self.att = nn.MultiheadAttention(embed_dim, num_heads, batch_first= True)
         self.ffn = nn.Sequential(
             nn.Linear(embed_dim, feed_forward_dim),
             nn.ReLU(),
