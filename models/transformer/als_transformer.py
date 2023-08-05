@@ -94,8 +94,12 @@ class Transformer(nn.Module):
             print(enc_out.shape)
             dec_out = self.decoder(enc_out, dec_input)
             logits = self.classifier(dec_out)
-            logits = torch.argmax(logits, axis=-1, output_type=torch.int32)
+            logits = torch.argmax(logits, dim = 1)
+            print(logits.shape)
             last_logit = logits[:, -1][:, None]
+            print(last_logit.shape)
             dec_logits.append(last_logit)
+            # print(dec_logits)
             dec_input = torch.cat([dec_input, last_logit], dim=-1)
+        print(dec_input.shape)
         return dec_input

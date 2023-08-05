@@ -48,7 +48,7 @@ device = torch.device("cuda:0")
 
 train_dataset = AslDataset(train_df.dataset, npy_path, character_to_prediction_index_path, config, device)
 val_dataset = AslDataset(val_df.dataset, npy_path, character_to_prediction_index_path, config, device)
-train_loader = DataLoader(train_dataset , batch_size = 64, shuffle = True, drop_last = True)
+train_loader = DataLoader(train_dataset , batch_size = 1, shuffle = True, drop_last = True)
 val_loader = DataLoader(val_dataset, batch_size = 32, shuffle = True, drop_last = True)
 
 
@@ -65,7 +65,7 @@ model = Transformer(
     device= device
 )
 
-checkpoint = torch.load('/workspace/src/torch_asl/checkpoints/colab/checkpoint_epoch_3.pth')
+checkpoint = torch.load('/workspace/src/torch_asl/checkpoints/checkpoint_epoch_5.pth')
 
 model.load_state_dict(checkpoint["state_dict"]) 
 model.eval()
@@ -86,7 +86,8 @@ for batch in train_loader:
             prediction += train_dataset.num_to_char[preds[i, j]]
             if preds[i, j] == 3:
                 break
-        print("[target]: ", target)
+        print("[target]: ", phrase)
+        print("[predict]: ", preds)
         break
     break
 # export preds:

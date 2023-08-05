@@ -19,12 +19,6 @@ config = ASLConfig(max_position_embeddings= 64)
 npy_path = "/workspace/data/asl_numpy_dataset/train_landmarks/train_npy"
 df = pd.read_csv("/workspace/data/asl_numpy_dataset/train.csv")
 
-df = df[df['length'] >= 50]
-len_data = df.shape[0]
-split = 0.3
-val_size = int(0.3 * len_data)
-train_size = len_data - val_size
-train_df, val_df = random_split(df, [train_size, val_size])
 character_to_prediction_index_path = "/workspace/data/asl_numpy_dataset/character_to_prediction_index.json"
 # a, b = asl_dataset.__getitem__(0)
 num_hid = 980
@@ -43,11 +37,20 @@ num_epochs = 50
 #     print(i)
 #     # i = i + 1
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
-train_dataset = AslDataset(train_df.dataset, npy_path, character_to_prediction_index_path, config, device)
-val_dataset = AslDataset(val_df.dataset, npy_path, character_to_prediction_index_path, config, device)
-train_loader = DataLoader(train_dataset , batch_size = 64, shuffle = True, drop_last = True)
+df = df[df['length'] >= 50]
+len_data = df.shape[0]
+split = 0.3
+val_size = int(0.3 * len_data)
+train_size = len_data - val_size
+shuffled_df = df.sample(frac=1).reset_index(drop=True)
+train_df = shuffled_df[:train_size]
+val_df = shuffled_df[train_size:]
+# print(train_df, val_df)
+train_dataset = AslDataset(train_df, npy_path, character_to_prediction_index_path, config, device)
+val_dataset = AslDataset(val_df, npy_path, character_to_prediction_index_path, config, device)
+train_loader = DataLoader(train_dataset , batch_size = 32, shuffle = True, drop_last = True)
 val_loader = DataLoader(val_dataset, batch_size = 32, shuffle = True, drop_last = True)
+
 
 model = Transformer(
     num_hid=num_hid,
@@ -91,7 +94,7 @@ for epoch in range(num_epochs):
         val_loss = 0.
         for j, batch in enumerate(tqdm(val_loader, desc=f"Epoch {epoch}")):
             input, phrase = batch
-            phrase = phrase.long()
+            phrase = phrase.int()
             outputs = model(input['inputs_embeds'], phrase)
             loss = loss_fn(outputs.transpose(1, 2), phrase)
             val_loss += loss.item()
