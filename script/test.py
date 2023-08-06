@@ -76,18 +76,24 @@ for batch in train_loader:
     landmark = landmark_input['inputs_embeds']
     bs = landmark.shape[0]
     # print(model)
-    preds = model.inference(landmark, start_token_idx= 2)
-    preds = preds.cpu().numpy()
-    for i in range(bs):
-        # print(phrase[i, :])
-        target = "".join(train_dataset.num_to_char[_.cpu().item()] for _ in phrase[i, :])
-        prediction = ""
-        for j in range(preds[i].shape[0]):
-            prediction += train_dataset.num_to_char[preds[i, j]]
-            if preds[i, j] == 3:
-                break
-        print("[target]: ", phrase)
-        print("[predict]: ", preds)
-        break
+    # preds = model.inference(landmark, start_token_idx= 2)
+    model.eval()
+    with torch.no_grad():
+        preds = model(landmark, phrase )
+        
+        preds = torch.argmax(preds, dim = 2).cpu().numpy()
+    print("[target]: ", phrase)
+    print("[predict]: ", preds)
+    # for i in range(bs):
+    #     # print(phrase[i, :])
+    #     target = "".join(train_dataset.num_to_char[_.cpu().item()] for _ in phrase[i, :])
+    #     prediction = ""
+    #     for j in range(preds[i].shape[0]):
+    #         prediction += train_dataset.num_to_char[preds[i, j]]
+    #         if preds[i, j] == 3:
+    #             break
+    #     print("[target]: ", phrase)
+    #     print("[predict]: ", preds)
+    #     break
     break
 # export preds:

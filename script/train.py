@@ -4,7 +4,7 @@ import pandas as pd
 import sys
 import torch
 from tqdm import tqdm
-
+import sys
 sys.path.append("/workspace/src/torch_asl")
 
 
@@ -13,6 +13,7 @@ from models.data.dataset import AslDataset
 from models.transformer.als_transformer import Transformer
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
+import torch.nn.functional as F
 
 config = ASLConfig(max_position_embeddings= 64)
 # create df in numpy
@@ -65,7 +66,7 @@ model = Transformer(
 )
 model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-loss_fn = torch.nn.CrossEntropyLoss(ignore_index=0)
+loss_fn = torch.nn.CrossEntropyLoss()
 for epoch in range(num_epochs):
     total_loss = 0.0
     total_correct = 0
@@ -74,32 +75,48 @@ for epoch in range(num_epochs):
     for j, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch}")):
         # print("batch {}|{}".format(j, epoch))
         input, phrase = batch
-        phrase = phrase.long()
+        phrase = phrase.int()
         optimizer.zero_grad()
         # forward pass
         outputs = model(input['inputs_embeds'], phrase)
-        # print("output: ", outputs.shape)
-        one_hot = torch.nn.functional.one_hot(phrase, num_classes= 59)
+        # # print("output: ", outputs.shape, ", ", outputs.dtype, ", ", outputs)
+        # # print("phrase: ", phrase.shape, ", ", phrase.dtype, ", ", phrase)
+        print("target: ", phrase.shape, ",  ",  phrase.cpu().numpy())    
+        print("predict: ", torch.argmax(outputs, dim = 2).shape, ", ", torch.argmax(outputs, dim = 2).cpu().numpy())        
+        output_flanttened = outputs.view(-1, num_classes)
+        phrase_flanttened = phrase.view(-1).long()
+        loss = loss_fn(output_flanttened, phrase_flanttened)
+        print(loss)
+        break
+        # one_hot = torch.nn.functional.one_hot(phrase, num_classes= 59)
         # print("one hot: ", one_hot.shape)
-        loss = loss_fn(outputs.transpose(1, 2), phrase)
         # backpropagation and optimization
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
+        
         # print(loss)
-    avg_loss = total_loss / len(train_loader.dataset)
-    print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {avg_loss:.4f}")
+    break
+    print("end training epoch")
+    # print("output: ", outputs.shape, ", ", outputs.dtype, ", ", outputs)
+    # print("phrase: ", phrase.shape, ", ", phrase.dtype, ", ", phrase)
+    print("target: ", phrase.shape, ",  ",  phrase.cpu().numpy())    
+    print("predict: ", torch.argmax(outputs, dim = 2).shape, ", ", torch.argmax(outputs, dim = 2).cpu().numpy())
+
+    avg_loss = total_loss 
+    print(f"Epoch {epoch+1}/{num_epochs}, Training Loss: {avg_loss:.4f}")
     model.eval()
+    
     with torch.no_grad():
         val_loss = 0.
         for j, batch in enumerate(tqdm(val_loader, desc=f"Epoch {epoch}")):
             input, phrase = batch
-            phrase = phrase.int()
+            phrase = phrase
             outputs = model(input['inputs_embeds'], phrase)
             loss = loss_fn(outputs.transpose(1, 2), phrase)
             val_loss += loss.item()
     val_avg_loss = val_loss / len(val_loader.dataset)
-    # print(f"Test Accuracy: {val_avg_loss:.4f}")
+    print(f"Validation Loss: {val_avg_loss:.4f}")
     # save checkpoint
     checkpoint = {
         'epoch': epoch + 1,

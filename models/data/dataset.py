@@ -28,8 +28,9 @@ class AslDataset(data.Dataset):
         
     def normalize(self, data):
         ref = data.flatten()
-        ref = data[~data.isnan()]
-        mu, std = ref.mean(), data.std()
+        ref = ref[~torch.isnan(ref)]
+        mu, std = ref.mean(), ref.std()
+        print("mu: ", mu, ", std: ", std)
         return (data - mu) / std
     
     def get_landmarks(self, data):
