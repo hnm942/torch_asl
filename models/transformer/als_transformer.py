@@ -9,57 +9,51 @@ from .embedding import LandmarkEmbedding, TokenEmbedding
 class Transformer(nn.Module):
     def __init__(
         self,
-        num_hid=64,
+        num_hid=980,
         num_head=2,
         num_feed_forward=128,
         source_maxlen=100,
         target_maxlen=100,
         num_layers_enc=4,
         num_layers_dec=1,
-        num_classes=10,
+        num_classes=59,
+        device = None
     ):
-        super().__init__()
-        self.loss_metric = nn.MSELoss()
-        self.num_layers_enc = num_layers_enc
-        self.num_layers_dec = num_layers_dec
+        super(Transformer, self).__init__()
+        self.device = device
         self.target_maxlen = target_maxlen
-        self.num_classes = num_classes
-
-        self.enc_input = LandmarkEmbedding(num_hid=num_hid, maxlen=source_maxlen)
-        self.dec_input = TokenEmbedding(
-            num_vocab=num_classes, maxlen=target_maxlen, num_hid=num_hid
-        )
-
-        self.encoder = nn.Sequential(
-            self.enc_input,
-            *[
-                TransformerEncoder(num_hid, num_head, num_feed_forward)
-                for _ in range(num_layers_enc)
-            ]
-        )
-
-        for i in range(num_layers_dec):
-            setattr(
-                self,
-                f"dec_layer_{i}",
-                TransformerDecoder(num_hid, num_head, num_feed_forward),
-            )
-
+        self.source_emb = LandmarkEmbedding(num_hid, source_maxlen, self.device)
+        self.target_emb = TokenEmbedding(num_classes, target_maxlen, num_hid, self.device)
+        self.transformer_encoders = nn.ModuleList([
+            TransformerEncoder(num_hid, num_head, num_feed_forward, self.device)
+            for _ in range(num_layers_enc)
+        ])
+        self.transformer_decoders = nn.ModuleList([
+            TransformerDecoder(num_hid, num_head, num_feed_forward, self.device)
+            for _ in range(num_layers_dec)
+        ])
         self.classifier = nn.Linear(num_hid, num_classes)
+        self.loss_metric = nn.CrossEntropyLoss()  
 
-    def decode(self, enc_out, target):
-        y = self.dec_input(target)
-        for i in range(self.num_layers_dec):
-            y = getattr(self, f"dec_layer_{i}")(enc_out, y)
-        return y
+    def encoder(self, source):
+        enc_out = self.source_emb(source)
+        for encoder in self.transformer_encoders:
+            enc_out = encoder(enc_out)
+        return enc_out
 
-    def forward(self, inputs):
-        source = inputs[0]
-        target = inputs[1]
-        x = self.encoder(source)
-        y = self.decode(x, target)
-        return self.classifier(y)
+    def decoder(self, enc_out, target):
+        dec_out = self.target_emb(target)
+        # print(dec_out.shape)
+        for decoder in self.transformer_decoders:
+            # print(enc_out.shape, dec_out.shape)
+            dec_out = decoder(enc_out, dec_out)
+        return dec_out
 
+    def forward(self, source, target):
+        enc_out = self.encoder(source)
+        dec_out = self.decoder(enc_out, target)
+        return self.classifier(dec_out)
+    
     def training_step(self, batch):
         """Processes one batch inside model.fit()."""
         source = batch[0]
@@ -88,17 +82,24 @@ class Transformer(nn.Module):
         self.loss_metric.update_state(loss.item())
         return {"loss": self.loss_metric.result()}
 
-    def generate(self, source, target_start_token_idx):
-        """Performs inference over one batch of inputs using greedy decoding."""
-        bs = source.size(0)
-        enc = self.encoder(source)
-        dec_input = torch.full((bs, 1), target_start_token_idx, dtype=torch.long, device=source.device)
+    def inference(self, landmarks, start_token_idx = 2):
+        enc_out = self.encoder(landmarks)
+        # export outout
+        bs = landmarks.shape[0] # batch size
+        # decoder input
+        dec_input = torch.ones((bs, 1), dtype=torch.int32) * start_token_idx
+        dec_input = dec_input.to(self.device)
         dec_logits = []
-        for i in range(self.target_maxlen - 1):
-            dec_out = self.decode(enc, dec_input)
+        for i in range(self.target_maxlen):
+            print(enc_out.shape)
+            dec_out = self.decoder(enc_out, dec_input)
             logits = self.classifier(dec_out)
-            logits = torch.argmax(logits, dim=-1, keepdim=True)
-            last_logit = logits[:, -1]
-            dec_logits.append(last_logit.unsqueeze(1))
+            logits = torch.argmax(logits, dim = 1)
+            print(logits.shape)
+            last_logit = logits[:, -1][:, None]
+            print(last_logit.shape)
+            dec_logits.append(last_logit)
+            # print(dec_logits)
             dec_input = torch.cat([dec_input, last_logit], dim=-1)
+        print(dec_input.shape)
         return dec_input

@@ -6,44 +6,53 @@ from models.utils.config import ASLConfig
 from models.data import preprocess, augmentation, landmark_indices
 import torch.nn.functional as F
 import json
+import dask.array as da
 
 class AslDataset(data.Dataset):
-    def __init__(self, df, npy_path, character_to_prediction_index_path, cfg, phase = "train"):
+    def __init__(self, df, npy_path, character_to_prediction_index_path, cfg, device, phase = "train"):
         self.df = df
-        self.max_len = cfg.max_position_embeddings  - 1
+        self.max_landmark_size = cfg.max_landmark_size 
+        self.max_phrase_size = cfg.max_phrase_size
         self.phase = phase
         self.initStaticHashTable(character_to_prediction_index_path)
         #load npy:
-        print("load data in: {}".format(npy_path))
-        self.npy = np.load(npy_path)[:, 1:]
+        # print("load data in: {}".format(npy_path))
+        self.npy = da.from_npy_stack(npy_path)[:, 1:]
+        # print("load npy from dash: ", self.npy.shape)
         self.npy = self.npy.reshape(-1, 82, 3)
-        print("load data successful with shape {}".format(self.npy.shape))
+        # print("load data successful with shape {}".format(self.npy.shape))
         self.hand_landmarks = landmark_indices.HandLandmark()
         self.lip_landmarks = landmark_indices.LipPoints()
         self.dis_idx0, self.dis_idx1 = torch.where(torch.triu(torch.ones((21, 21)), 1) == 1)
         self.dis_idx2, self.dis_idx3 = torch.where(torch.triu(torch.ones((20, 20)), 1) == 1)
+        self.device = device
         
     def normalize(self, data):
         ref = data.flatten()
-        ref = data[~data.isnan()]
-        mu, std = ref.mean(), data.std()
+        ref = ref[~torch.isnan(ref)]
+        mu, std = ref.mean(), ref.std()
         return (data - mu) / std
     
     def get_landmarks(self, data):
-        landmarks = self.npy[data.idx:data.idx + data.length]
-        print("before augmentation and preprocessing: ", landmarks.shape)
+        landmarks = self.npy[data.idx:data.idx + data.length].compute().copy()
+        # print("load landmarks with shape: ", landmarks.shape)
+        # print("before augmentation and preprocessing: ", landmarks.shape)
         # augumentation if training
+        # print(landmarks.shape)
         if self.phase == "train":
             # random interpolation
             landmarks = augmentation.aug2(landmarks)
-            print("after interpolation " ,landmarks.shape)
+
+            # print("after interpolation " ,landmarks.shape)
             # random rotate left hand and right hand
             landmarks[:, -42:-21] = augmentation.random_hand_rotate(landmarks[:, -42:-21], self.hand_landmarks, joint_prob = 0.2, p = 0.8)
             landmarks[:,-21: ] = augmentation.random_hand_rotate(landmarks[:, -21:], self.hand_landmarks, joint_prob = 0.2, p = 0.8)
         # convert data to torch
         landmarks = torch.tensor(landmarks.astype(np.float32))
+        # print("convert data to torch shape: ", landmarks.shape)
         # sereparate part of body
         lip, lhand, rhand = landmarks[:, :-42], landmarks[:, -42:-21], landmarks[:, -21:]
+        # print("lip shape: {}, lhand shape: {}, rhand shape: {}".format(lip.shape, lhand.shape, rhand.shape))
         if self.phase == "train":
             if np.random.rand() < 0.5:
                 lhand, rhand = rhand, lhand
@@ -55,17 +64,34 @@ class AslDataset(data.Dataset):
         lhand = lhand if lhand.isnan().sum() < rhand.isnan().sum() else preprocess.flip_hand(lip, rhand)
         # combine it together
         landmarks = self.normalize(torch.cat([lip, lhand], 1))
+        landmarks = landmarks.flatten(1)
+        landmarks = torch.where(torch.isnan(landmarks), torch.tensor(0.0, dtype = torch.float32).to(landmarks), landmarks)
+        if len(landmarks) > self.max_landmark_size:
+            # print("before use max len: ",landmarks.shape)
+            landmarks = landmarks[np.linspace(0, len(landmarks), self.max_landmark_size, endpoint = False)]
+            # print("after use max len: ",landmarks.shape)
+        return landmarks
         # Motion features consist of future motion and history motion,
+        # print("[dataloader] offset shape", landmarks[-1:].shape)
         offset = torch.zeros_like(landmarks[-1:])
         movement = landmarks[:-1] - landmarks[1:]
         dpos = torch.cat([movement, offset])
         rdpos = torch.cat([offset, -movement])
+
         ld = torch.linalg.vector_norm(lhand[:,self.dis_idx0,:2] - lhand[:,self.dis_idx1,:2], dim = -1)
         lipd = torch.linalg.vector_norm(lip[:,self.dis_idx2,:2] - lip[:,self.dis_idx3,:2], dim = -1)
         lsim = F.cosine_similarity(lhand[:,self.hand_landmarks.hand_angles[:,0]] - lhand[:,self.hand_landmarks.hand_angles[:,1]],
                                    lhand[:,self.hand_landmarks.hand_angles[:,2]] - lhand[:,self.hand_landmarks.hand_angles[:,1]], -1)
         lipsim = F.cosine_similarity(lip[:,self.lip_landmarks.flatten_lip_angles[:,0]] - lip[:,self.lip_landmarks.flatten_lip_angles[:,1]],
                                      lip[:,self.lip_landmarks.flatten_lip_angles[:,2]] - lip[:,self.lip_landmarks.flatten_lip_angles[:,1]], -1)
+        
+        # print("[dataloader] landmark shape", landmarks.shape)
+        # print("[dataloader] dpos shape", dpos.shape)
+        # print("[dataloader] rdpos shape", rdpos.shape)
+        # print("[dataloader] ld shape", ld.shape)
+        # print("[dataloader] lipd shape", lipd.shape)
+        # print("[dataloader] lsim shape", lsim.shape)
+        # print("[dataloader] lipsim shape", lipsim.shape)
         landmarks = torch.cat([
             landmarks.flatten(1),
             dpos.flatten(1),
@@ -75,9 +101,12 @@ class AslDataset(data.Dataset):
             lipsim.flatten(1),
             lsim.flatten(1),
         ], -1)
+        # print("landmarks output shape: ", landmarks.shape)
         landmarks = torch.where(torch.isnan(landmarks), torch.tensor(0.0, dtype = torch.float32).to(landmarks), landmarks)
         if len(landmarks) > self.max_len:
+            # print("before use max len: ",landmarks.shape)
             landmarks = landmarks[np.linspace(0, len(landmarks), self.max_len, endpoint = False)]
+            # print("after use max len: ",landmarks.shape)
         return landmarks
 
     def initStaticHashTable(self, path):
@@ -104,17 +133,18 @@ class AslDataset(data.Dataset):
     def __getitem__(self, indices):
         data = self.df.iloc[indices] # row in file csv
         landmark = self.get_landmarks(data) 
-        attention_mask = torch.zeros(self.max_len)
+        if landmark.shape[0] < self.max_landmark_size:
+            temp = torch.zeros((self.max_landmark_size, landmark.shape[1]))
+            temp[:landmark.shape[0], :] = landmark
+            landmark = temp
+        attention_mask = torch.zeros(self.max_landmark_size)
         attention_mask[:len(landmark)] = 1
         phrase = data["phrase"]
         phrase = '#' + phrase + '$'
-        
         phrase = torch.tensor([self.char_to_num[c] for c in phrase])
-        phrase = self.table.lookup(phrase)
-        phrase = torch.nn.functional.pad(phrase, pad=(0, 64 - phrase.shape[0]))
-        landmark = landmark.unsqueeze(0)  # Thêm chiều mới ở đầu (dim=0)
-        phrase = phrase.unsqueeze(0)
-        phrase[1]
-        print(phrase.shape)
+        phrase = torch.nn.functional.pad(phrase, pad=(0, self.max_phrase_size - phrase.shape[0]))
+        landmark = landmark.to(self.device)
+        attention_mask = attention_mask.to(self.device)
+        phrase = phrase.to(self.device)
         return {"inputs_embeds": landmark, "attention_mask": attention_mask}, phrase
     
