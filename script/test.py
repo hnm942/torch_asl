@@ -16,10 +16,10 @@ from torch.utils.data import random_split
 
 
 
-config = ASLConfig(max_position_embeddings= 96)
+config = ASLConfig(max_landmark_size = 96, max_phrase_size = 64)
 # create df in numpy
-npy_path = "/workspace/data/asl_numpy_dataset/train_landmarks/train_npy"
-df = pd.read_csv("/workspace/data/asl_numpy_dataset/train.csv")
+npy_path = "/workspace/data/asl_dash_dataset/train_landmarks/train_npy"
+df = pd.read_csv("/workspace/data/asl_dash_dataset/train.csv")
 
 df = df[df['length'] >= 50]
 len_data = df.shape[0]
@@ -27,10 +27,12 @@ split = 0.3
 val_size = int(0.3 * len_data)
 train_size = len_data - val_size
 train_df, val_df = random_split(df, [train_size, val_size])
-character_to_prediction_index_path = "/workspace/data/asl_numpy_dataset/character_to_prediction_index.json"
+character_to_prediction_index_path = "/workspace/data/asl_dash_dataset/character_to_prediction_index.json"
 # a, b = asl_dataset.__getitem__(0)
-num_hid = 980
-num_head = 2
+character_to_prediction_index_path = "/workspace/data/asl_dash_dataset/character_to_prediction_index.json"
+# a, b = asl_dataset.__getitem__(0)
+num_hid = 183
+num_head = 3
 num_feed_forward = 96
 source_maxlen = 96
 target_maxlen = 96
@@ -65,35 +67,30 @@ model = Transformer(
     device= device
 )
 
-checkpoint = torch.load('/workspace/src/torch_asl/checkpoints/checkpoint_epoch_5.pth')
+checkpoint = torch.load('/workspace/src/torch_asl/checkpoints/checkpoint_epoch_6.pth')
 
 model.load_state_dict(checkpoint["state_dict"]) 
 model.eval()
 model.to(device)
-
-for batch in train_loader:
-    landmark_input, phrase = batch 
-    landmark = landmark_input['inputs_embeds']
-    bs = landmark.shape[0]
-    # print(model)
-    # preds = model.inference(landmark, start_token_idx= 2)
-    model.eval()
-    with torch.no_grad():
-        preds = model(landmark, phrase )
-        
-        preds = torch.argmax(preds, dim = 2).cpu().numpy()
-    print("[target]: ", phrase)
-    print("[predict]: ", preds)
-    # for i in range(bs):
-    #     # print(phrase[i, :])
-    #     target = "".join(train_dataset.num_to_char[_.cpu().item()] for _ in phrase[i, :])
-    #     prediction = ""
-    #     for j in range(preds[i].shape[0]):
-    #         prediction += train_dataset.num_to_char[preds[i, j]]
-    #         if preds[i, j] == 3:
-    #             break
-    #     print("[target]: ", phrase)
-    #     print("[predict]: ", preds)
-    #     break
-    break
+with torch.no_grad():
+    for batch in train_loader:
+        landmark_input, phrase = batch 
+        landmark = landmark_input['inputs_embeds']
+        phrase = phrase.int()
+        outputs = model.encoder(landmark)
+        preds = torch.argmax(outputs, dim = 2).cpu().numpy()
+        print("[target]: ", phrase)
+        print("[predict]: ", preds)
+        # for i in range(bs):
+        #     # print(phrase[i, :])
+        #     target = "".join(train_dataset.num_to_char[_.cpu().item()] for _ in phrase[i, :])
+        #     prediction = ""
+        #     for j in range(preds[i].shape[0]):
+        #         prediction += train_dataset.num_to_char[preds[i, j]]
+        #         if preds[i, j] == 3:
+        #             break
+        #     print("[target]: ", phrase)
+        #     print("[predict]: ", preds)
+        #     break
+        break
 # export preds:

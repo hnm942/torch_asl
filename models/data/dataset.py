@@ -11,7 +11,8 @@ import dask.array as da
 class AslDataset(data.Dataset):
     def __init__(self, df, npy_path, character_to_prediction_index_path, cfg, device, phase = "train"):
         self.df = df
-        self.max_len = cfg.max_position_embeddings 
+        self.max_landmark_size = cfg.max_landmark_size 
+        self.max_phrase_size = cfg.max_phrase_size
         self.phase = phase
         self.initStaticHashTable(character_to_prediction_index_path)
         #load npy:
@@ -30,7 +31,6 @@ class AslDataset(data.Dataset):
         ref = data.flatten()
         ref = ref[~torch.isnan(ref)]
         mu, std = ref.mean(), ref.std()
-        print("mu: ", mu, ", std: ", std)
         return (data - mu) / std
     
     def get_landmarks(self, data):
@@ -64,6 +64,13 @@ class AslDataset(data.Dataset):
         lhand = lhand if lhand.isnan().sum() < rhand.isnan().sum() else preprocess.flip_hand(lip, rhand)
         # combine it together
         landmarks = self.normalize(torch.cat([lip, lhand], 1))
+        landmarks = landmarks.flatten(1)
+        landmarks = torch.where(torch.isnan(landmarks), torch.tensor(0.0, dtype = torch.float32).to(landmarks), landmarks)
+        if len(landmarks) > self.max_landmark_size:
+            # print("before use max len: ",landmarks.shape)
+            landmarks = landmarks[np.linspace(0, len(landmarks), self.max_landmark_size, endpoint = False)]
+            # print("after use max len: ",landmarks.shape)
+        return landmarks
         # Motion features consist of future motion and history motion,
         # print("[dataloader] offset shape", landmarks[-1:].shape)
         offset = torch.zeros_like(landmarks[-1:])
@@ -126,16 +133,16 @@ class AslDataset(data.Dataset):
     def __getitem__(self, indices):
         data = self.df.iloc[indices] # row in file csv
         landmark = self.get_landmarks(data) 
-        if landmark.shape[0] < self.max_len:
-            temp = torch.zeros((self.max_len, landmark.shape[1]))
+        if landmark.shape[0] < self.max_landmark_size:
+            temp = torch.zeros((self.max_landmark_size, landmark.shape[1]))
             temp[:landmark.shape[0], :] = landmark
             landmark = temp
-        attention_mask = torch.zeros(self.max_len)
+        attention_mask = torch.zeros(self.max_landmark_size)
         attention_mask[:len(landmark)] = 1
         phrase = data["phrase"]
         phrase = '#' + phrase + '$'
         phrase = torch.tensor([self.char_to_num[c] for c in phrase])
-        phrase = torch.nn.functional.pad(phrase, pad=(0, 96 - phrase.shape[0]))
+        phrase = torch.nn.functional.pad(phrase, pad=(0, self.max_phrase_size - phrase.shape[0]))
         landmark = landmark.to(self.device)
         attention_mask = attention_mask.to(self.device)
         phrase = phrase.to(self.device)

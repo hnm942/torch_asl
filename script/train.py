@@ -12,18 +12,17 @@ from models.utils.config import ASLConfig
 from models.data.dataset import AslDataset
 from models.transformer.als_transformer import Transformer
 from torch.utils.data import DataLoader
-from torch.utils.data import random_split
 import torch.nn.functional as F
 
-config = ASLConfig(max_position_embeddings= 64)
+config = ASLConfig(max_landmark_size = 96, max_phrase_size = 64)
 # create df in numpy
-npy_path = "/workspace/data/asl_numpy_dataset/train_landmarks/train_npy"
-df = pd.read_csv("/workspace/data/asl_numpy_dataset/train.csv")
+npy_path = "/workspace/data/asl_dash_dataset/train_landmarks/train_npy"
+df = pd.read_csv("/workspace/data/asl_dash_dataset/train.csv")
 
-character_to_prediction_index_path = "/workspace/data/asl_numpy_dataset/character_to_prediction_index.json"
+character_to_prediction_index_path = "/workspace/data/asl_dash_dataset/character_to_prediction_index.json"
 # a, b = asl_dataset.__getitem__(0)
-num_hid = 980
-num_head = 2
+num_hid = 183
+num_head = 3
 num_feed_forward = 96
 source_maxlen = 96
 target_maxlen = 96
@@ -47,8 +46,8 @@ shuffled_df = df.sample(frac=1).reset_index(drop=True)
 train_df = shuffled_df[:train_size]
 val_df = shuffled_df[train_size:]
 # print(train_df, val_df)
-train_dataset = AslDataset(train_df, npy_path, character_to_prediction_index_path, config, device)
-val_dataset = AslDataset(val_df, npy_path, character_to_prediction_index_path, config, device)
+train_dataset = AslDataset(train_df, npy_path, character_to_prediction_index_path, config, device, phase= "train")
+val_dataset = AslDataset(val_df, npy_path, character_to_prediction_index_path, config, device, phase= "validation")
 train_loader = DataLoader(train_dataset , batch_size = 32, shuffle = True, drop_last = True)
 val_loader = DataLoader(val_dataset, batch_size = 32, shuffle = True, drop_last = True)
 
@@ -75,19 +74,21 @@ for epoch in range(num_epochs):
     for j, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch}")):
         # print("batch {}|{}".format(j, epoch))
         input, phrase = batch
+        # print("input['inputs_embeds']: ", input['inputs_embeds'].shape)
+
         phrase = phrase.int()
         optimizer.zero_grad()
         # forward pass
         outputs = model(input['inputs_embeds'], phrase)
         # # print("output: ", outputs.shape, ", ", outputs.dtype, ", ", outputs)
         # # print("phrase: ", phrase.shape, ", ", phrase.dtype, ", ", phrase)
-        print("target: ", phrase.shape, ",  ",  phrase.cpu().numpy())    
-        print("predict: ", torch.argmax(outputs, dim = 2).shape, ", ", torch.argmax(outputs, dim = 2).cpu().numpy())        
+        # print("target: ", phrase.shape, ",  ",  phrase.cpu().numpy())    
+        # print("predict: ", torch.argmax(outputs, dim = 2).shape, ", ", torch.argmax(outputs, dim = 2).cpu().numpy())        
         output_flanttened = outputs.view(-1, num_classes)
         phrase_flanttened = phrase.view(-1).long()
         loss = loss_fn(output_flanttened, phrase_flanttened)
-        print(loss)
-        break
+        # print(loss)
+        # break
         # one_hot = torch.nn.functional.one_hot(phrase, num_classes= 59)
         # print("one hot: ", one_hot.shape)
         # backpropagation and optimization
@@ -96,14 +97,14 @@ for epoch in range(num_epochs):
         total_loss += loss.item()
         
         # print(loss)
-    break
+    # break
     print("end training epoch")
     # print("output: ", outputs.shape, ", ", outputs.dtype, ", ", outputs)
     # print("phrase: ", phrase.shape, ", ", phrase.dtype, ", ", phrase)
     print("target: ", phrase.shape, ",  ",  phrase.cpu().numpy())    
     print("predict: ", torch.argmax(outputs, dim = 2).shape, ", ", torch.argmax(outputs, dim = 2).cpu().numpy())
 
-    avg_loss = total_loss 
+    avg_loss = total_loss / len(train_dataset)
     print(f"Epoch {epoch+1}/{num_epochs}, Training Loss: {avg_loss:.4f}")
     model.eval()
     
