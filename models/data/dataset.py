@@ -137,8 +137,8 @@ class AslDataset(data.Dataset):
             temp = torch.zeros((self.max_landmark_size, landmark.shape[1]))
             temp[:landmark.shape[0], :] = landmark
             landmark = temp
-        attention_mask = torch.zeros(self.max_landmark_size)
-        attention_mask[:len(landmark)] = 1
+        attention_mask = torch.zeros(self.max_landmark_size, self.max_landmark_size)
+        attention_mask[:, :len(landmark)] = 1
         phrase = data["phrase"]
         phrase = '#' + phrase + '$'
         phrase = torch.tensor([self.char_to_num[c] for c in phrase])
