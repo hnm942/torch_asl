@@ -35,16 +35,16 @@ class TransformerDecoder(nn.Module):
         mult = torch.tensor([batch_size, 1, 1], dtype=int, device = self.device)
         return mask.repeat(*mult)
 
-    def forward(self, enc_out, target):
+    def forward(self, enc_out, target, mask_source = None,  mask_target = None):
         input_shape = target.size()
         batch_size = input_shape[0]
         seq_len = input_shape[1]
         causal_mask = self.causal_attention_mask(batch_size * self.num_heads, seq_len, seq_len, target.dtype)
         # causal_mask = causal_mask.to(self.device)
         # print("[decode] causal_mask: ",causal_mask.shape)
-        target_att, _ = self.self_att(target, target, target, attn_mask=causal_mask)
+        target_att, _ = self.self_att(target, target, target, key_padding_mask = mask_target, attn_mask=causal_mask)
         target_norm = self.layernorm1(target + self.self_dropout(target_att))
-        enc_out, _ = self.enc_att(target_norm, enc_out, enc_out)
+        enc_out, _ = self.enc_att(target_norm, enc_out, enc_out ,  key_padding_mask= mask_source)
         enc_out_norm = self.layernorm2(enc_out + self.enc_dropout(enc_out))
         ffn_out = self.ffn(enc_out_norm)
         ffn_out_norm = self.layernorm3(enc_out_norm + self.ffn_dropout(ffn_out))
