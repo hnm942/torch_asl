@@ -16,8 +16,8 @@ class TransformerEncoder(nn.Module):
         self.dropout1 = nn.Dropout(rate)
         self.dropout2 = nn.Dropout(rate)
 
-    def forward(self, inputs, mask = None):
-        attn_output, _ = self.att(inputs, inputs, inputs)
+    def forward(self, inputs, mask_source = None): 
+        attn_output, _ = self.att(inputs, inputs, inputs, key_padding_mask= mask_source)
         attn_output = self.dropout1(attn_output)
         out1 = self.layernorm1(inputs + attn_output)
         ffn_output = self.ffn(out1)

@@ -64,8 +64,6 @@ model = Transformer(
     device = device
 )
 model.to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-loss_fn = torch.nn.CrossEntropyLoss()
 for epoch in range(num_epochs):
     total_loss = 0.0
     model.train()
@@ -75,7 +73,8 @@ for epoch in range(num_epochs):
         output = model.training_step(batch)
         loss = output["loss"]
         total_loss += loss
-    avg_loss = total_loss /  len(train_loader)
+
+    avg_loss = total_loss / len(train_loader)  # Tránh chia số lượng batch, không phải dataset
     print(f"Epoch {epoch+1}/{num_epochs}, Training Loss: {avg_loss:.4f}")
 
     model.eval()
@@ -83,14 +82,16 @@ for epoch in range(num_epochs):
         val_loss = 0.0
         for j, batch in enumerate(tqdm(val_loader, desc=f"Epoch {epoch}")):
             output = model.validation_step(batch)
-            val_loss += output["loss"]
-    val_avg_loss = val_loss / len(val_loader)
+            loss = output["loss"]
+            val_loss += loss
+    val_avg_loss = val_loss / len(val_loader)  # Tránh chia số lượng batch, không phải dataset
     print(f"Validation Loss: {val_avg_loss:.4f}")
+
     # Save checkpoint
     checkpoint = {
         'epoch': epoch + 1,
         'state_dict': model.state_dict(),
-        'optimizer': optimizer.state_dict(),
+        'optimizer': model.optimizer.state_dict(),
         'loss': avg_loss,
         'val_loss': val_avg_loss
     }
