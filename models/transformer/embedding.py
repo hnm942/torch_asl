@@ -5,7 +5,7 @@ class TokenEmbedding(nn.Module):
     def __init__(self, num_vocab, maxlen, num_hid, device):
         self.device = device
         super(TokenEmbedding, self).__init__()
-        self.emb = nn.Embedding(num_vocab, num_hid)
+        self.emb = nn.Embedding(maxlen, num_hid)
         self.pos_emb = nn.Embedding(maxlen, num_hid)
 
     def forward(self, x):

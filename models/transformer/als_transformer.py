@@ -62,7 +62,7 @@ class Transformer(nn.Module):
         phrase, phrase_mask = phrase_input["target"],  ["target_mask"]
         dec_input = phrase[:, :-1]
         dec_target = phrase[:, 1:]
-        preds = self.forward(landmark, dec_input, mask_source=None, mask_target=None)
+        preds = self(landmark, dec_input, mask_source=None, mask_target=None)
         mask = dec_target != 0
         loss = self.loss_metric(preds.permute(0, 2, 1), dec_target)
         self.optimizer.zero_grad()
@@ -77,7 +77,7 @@ class Transformer(nn.Module):
 
         dec_input = phrase[:, :-1]
         dec_target = phrase[:, 1:]
-        preds = self.forward(landmark, dec_input, mask_source=None, mask_target=None)
+        preds = self(landmark, dec_input, mask_source=None, mask_target=None)
         mask = dec_target != 0
         loss = self.loss_metric(preds.permute(0, 2, 1), dec_target)
         return {"loss": loss.item()}
@@ -87,7 +87,7 @@ class Transformer(nn.Module):
         bs = landmarks.shape[0] # batch size
         dec_input = torch.ones((bs, 1), dtype=torch.int32, device=self.device) * start_token_idx
         dec_logits = []
-        for i in range(self.target_maxlen):
+        for i in range(self.target_maxlen - 1): # because we already have 1st element
             dec_out = self.decoder(enc_out, dec_input)
             logits = self.classifier(dec_out)
             logits = torch.argmax(logits, dim=1)

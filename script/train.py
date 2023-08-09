@@ -73,6 +73,8 @@ for epoch in range(num_epochs):
         output = model.training_step(batch)
         loss = output["loss"]
         total_loss += loss
+        if j == 5:
+            break
 
     avg_loss = total_loss / len(train_loader)  # Tránh chia số lượng batch, không phải dataset
     print(f"Epoch {epoch+1}/{num_epochs}, Training Loss: {avg_loss:.4f}")

@@ -33,7 +33,7 @@ class TransformerDecoder(nn.Module):
         # print(dtype)
         mask = mask.view(1, n_dest, n_src)
         mult = torch.tensor([batch_size, 1, 1], dtype=int, device = self.device)
-        return mask.repeat(*mult)
+        return mask.repeat(*mult).to(torch.bool)
 
     def forward(self, enc_out, target, mask_source = None,  mask_target = None):
         input_shape = target.size()
@@ -42,7 +42,7 @@ class TransformerDecoder(nn.Module):
         causal_mask = self.causal_attention_mask(batch_size * self.num_heads, seq_len, seq_len, target.dtype)
         # causal_mask = causal_mask.to(self.device)
         # print("[decode] causal_mask: ",causal_mask.shape)
-        target_att, _ = self.self_att(target, target, target, key_padding_mask = mask_target, attn_mask=causal_mask)
+        target_att, _ = self.self_att(target, target, target, key_padding_mask = mask_target, attn_mask=None)
         target_norm = self.layernorm1(target + self.self_dropout(target_att))
         enc_out, _ = self.enc_att(target_norm, enc_out, enc_out ,  key_padding_mask= mask_source)
         enc_out_norm = self.layernorm2(enc_out + self.enc_dropout(enc_out))
