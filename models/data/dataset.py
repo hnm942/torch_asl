@@ -17,9 +17,11 @@ class AslDataset(data.Dataset):
         self.initStaticHashTable(character_to_prediction_index_path)
         #load npy:
         # print("load data in: {}".format(npy_path))
-        self.npy = da.from_npy_stack(npy_path)[:, 1:]
+        npy = da.from_npy_stack(npy_path)[:, 1:]
         # print("load npy from dash: ", self.npy.shape)
-        self.npy = self.npy.reshape(-1, 82, 3)
+        # self.npy = self.npy.reshape(-1, 82, 3)
+        npy_x, npy_y, npy_z = npy[:, :82][:, :, np.newaxis], npy[:, 82:164][:, :, np.newaxis], npy[:, 164:][:, :, np.newaxis]
+        self.npy = np.concatenate((npy_x, npy_y, npy_z), axis = 2)
         # print("load data successful with shape {}".format(self.npy.shape))
         self.hand_landmarks = landmark_indices.HandLandmark()
         self.lip_landmarks = landmark_indices.LipPoints()
