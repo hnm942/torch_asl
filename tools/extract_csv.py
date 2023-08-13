@@ -32,16 +32,7 @@ if __name__ == "__main__":
             new_row = {"path": row["path"], "file_id": row["file_id"], "sequence_id": row["sequence_id"], 
                                     "participant_id": row["participant_id"], "phrase": row["phrase"], "length": new_landmarks.shape[0]}
             new_df = pd.concat([new_df, pd.DataFrame([new_row])], ignore_index=True)
-            # print(row["file_id"])
-
-            # if i == 0:
-            #     arr = new_landmarks
-            #     i = 1
-            # else:
-            #     arr = np.concatenate((arr, new_landmarks), axis = 0)
-        # break
     new_df.to_csv("/workspace/data/asl_numpy_dataset/train.csv")    
-    # np.save(os.path.join(data_dir, "train_npy.npy"), arr)
 
     df = (
         pl

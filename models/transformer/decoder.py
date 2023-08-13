@@ -11,7 +11,7 @@ class TransformerDecoder(nn.Module):
         self.layernorm2 = nn.LayerNorm(normalized_shape=embed_dim, eps=1e-6)
         self.layernorm3 = nn.LayerNorm(normalized_shape=embed_dim, eps=1e-6)
         self.self_att = nn.MultiheadAttention(
-            embed_dim=embed_dim, num_heads=num_heads, dropout=dropout_rate, batch_first= True
+            59, num_heads=num_heads, dropout=dropout_rate, batch_first= True
         )
         self.enc_att = nn.MultiheadAttention(
             embed_dim=embed_dim, num_heads=num_heads, dropout=dropout_rate, batch_first= True
@@ -42,6 +42,7 @@ class TransformerDecoder(nn.Module):
         causal_mask = self.causal_attention_mask(batch_size * self.num_heads, seq_len, seq_len, target.dtype)
         # causal_mask = causal_mask.to(self.device)
         # print("[decode] causal_mask: ",causal_mask.shape)
+        print("[decode] target att")
         target_att, _ = self.self_att(target, target, target, key_padding_mask = mask_target, attn_mask=None)
         target_norm = self.layernorm1(target + self.self_dropout(target_att))
         enc_out, _ = self.enc_att(target_norm, enc_out, enc_out ,  key_padding_mask= mask_source)

@@ -52,6 +52,7 @@ class AslDataset(data.Dataset):
         # print("convert data to torch shape: ", landmarks.shape)
         # sereparate part of body
         lip, lhand, rhand = landmarks[:, :-42], landmarks[:, -42:-21], landmarks[:, -21:]
+        return lip, lhand, rhand
         # print("lip shape: {}, lhand shape: {}, rhand shape: {}".format(lip.shape, lhand.shape, rhand.shape))
         if self.phase == "train":
             if np.random.rand() < 0.5:
@@ -71,6 +72,47 @@ class AslDataset(data.Dataset):
             landmarks = landmarks[np.linspace(0, len(landmarks), self.max_landmark_size, endpoint = False)]
             # print("after use max len: ",landmarks.shape)
         return landmarks
+    
+    def get_landmarks(self, data):
+        landmarks = self.npy[data.idx:data.idx + data.length].compute().copy()
+        # print("load landmarks with shape: ", landmarks.shape)
+        # print("before augmentation and preprocessing: ", landmarks.shape)
+        # augumentation if training
+        # print(landmarks.shape)
+        if self.phase == "train":
+            # random interpolation
+            landmarks = augmentation.aug2(landmarks)
+
+            # print("after interpolation " ,landmarks.shape)
+            # random rotate left hand and right hand
+            landmarks[:, -42:-21] = augmentation.random_hand_rotate(landmarks[:, -42:-21], self.hand_landmarks, joint_prob = 0.2, p = 0.8)
+            landmarks[:,-21: ] = augmentation.random_hand_rotate(landmarks[:, -21:], self.hand_landmarks, joint_prob = 0.2, p = 0.8)
+        # convert data to torch
+        landmarks = torch.tensor(landmarks.astype(np.float32))
+        # print("convert data to torch shape: ", landmarks.shape)
+        # sereparate part of body
+        lip, lhand, rhand = landmarks[:, :-42], landmarks[:, -42:-21], landmarks[:, -21:]
+        return lip, lhand, rhand
+        # print("lip shape: {}, lhand shape: {}, rhand shape: {}".format(lip.shape, lhand.shape, rhand.shape))
+        if self.phase == "train":
+            if np.random.rand() < 0.5:
+                lhand, rhand = rhand, lhand
+                lhand[..., 0] *= -1
+                rhand[..., 0] *= -1
+                lip[:, 4:22], lip[:, 22:40] = lip[:, 22:40], lip[:, 4:22]
+                lip[..., 0] *= -1
+        # check nan 
+        lhand = lhand if lhand.isnan().sum() < rhand.isnan().sum() else preprocess.flip_hand(lip, rhand)
+        # combine it together
+        landmarks = self.normalize(torch.cat([lip, lhand], 1))
+        landmarks = landmarks.flatten(1)
+        landmarks = torch.where(torch.isnan(landmarks), torch.tensor(0.0, dtype = torch.float32).to(landmarks), landmarks)
+        if len(landmarks) > self.max_landmark_size:
+            # print("before use max len: ",landmarks.shape)
+            landmarks = landmarks[np.linspace(0, len(landmarks), self.max_landmark_size, endpoint = False)]
+            # print("after use max len: ",landmarks.shape)
+        return landmarks
+
         # Motion features consist of future motion and history motion,
         # print("[dataloader] offset shape", landmarks[-1:].shape)
         offset = torch.zeros_like(landmarks[-1:])

@@ -21,9 +21,9 @@ if __name__ == "__main__":
     data_path = "/workspace/data/{}/train_landmarks".format(folder_name)
     parquet_files = os.listdir("/workspace/data/{}/train_landmarks".format(folder_name))
     output_path = "/workspace/data/asl_numpy_dataset/train_landmarks"
-    lip_list = [f'x_face_{i}' for i in list(lip_indices)] + [f'y_face_{i}' for i in list(lip_indices)] + [f'z_face_{i}' for i in list(lip_indices)]
-    lhand_list = [f'x_left_hand_{i}' for i in list(hand_indices)] + [f'y_left_hand_{i}' for i in list(hand_indices)] + [f'z_left_hand_{i}' for i in list(hand_indices)]
-    rhand_list = [f'x_right_hand_{i}' for i in list(hand_indices)] + [f'y_right_hand_{i}' for i in list(hand_indices)] + [f'z_right_hand_{i}' for i in list(hand_indices)]
+    lip_list = [f'{j}_face_{i}'  for i in list(lip_indices) for j in ['x', 'y', 'z']]
+    lhand_list = [f'{j}_left_hand_{i}'  for i in list(hand_indices) for j in ['x', 'y', 'z']]
+    rhand_list = [f'{j}_right_hand_{i}'  for i in list(hand_indices) for j in ['x', 'y', 'z']]
     interested_list = lip_list + lhand_list + rhand_list
 
     for i in range(len(parquet_files)):
@@ -33,23 +33,9 @@ if __name__ == "__main__":
         
         temp = np.hstack((parquet.index.values.reshape(-1, 1).astype(int), parquet.loc[:, interested_list].to_numpy()))
         # print(temp)
-        # np.save(os.path.join(output_path, '{}.npy'.format(parquet_files[i])), temp)
-        temp = temp[:, 1:]
-        temp = temp.reshape(-1, 82, 3)
-        lip, lhand, rhand = temp[:, :-42], temp[:, -42:-21], temp[:, -21:]
-        print(lhand[np.isnan(lhand)].shape, lhand.reshape(-1).shape)
-        print(rhand[np.isnan(rhand)].shape, rhand.reshape(-1).shape)
-
-        # break
-        # if i == 0:
-        #     arr = temp
-        # else:
-        #     arr = np.concatenate((arr, temp), axis = 0)
-    # np.save(os.path.join(output_path, 'train_landmarks.npy'), arr)
-
-    # get interested landmark
-#     print(parquet.index.values.reshape(-1, 1).astype(int))
-#     print(np.hstack((parquet.index.values.reshape(-1, 1).astype(int), parquet.loc[:, interested_list].to_numpy())))
-# # parquet.loc[:, interested_list].to_numpy())
-#     print(parquet)
-
+        np.save(os.path.join(output_path, '{}.npy'.format(parquet_files[i])), temp)
+        # temp = temp[:, 1:]
+        # temp = temp.reshape(-1, 82, 3)
+        # lip, lhand, rhand = temp[:, :-42], temp[:, -42:-21], temp[:, -21:]
+        # print(lhand[np.isnan(lhand)].shape, lhand.reshape(-1).shape)
+        # print(rhand[np.isnan(rhand)].shape, rhand.reshape(-1).shape)
