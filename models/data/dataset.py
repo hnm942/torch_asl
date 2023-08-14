@@ -19,10 +19,10 @@ class AslDataset(data.Dataset):
         # print("load data in: {}".format(npy_path))
         npy = da.from_npy_stack(npy_path)[:, 1:]
         # print("load npy from dash: ", self.npy.shape)
-        # self.npy = self.npy.reshape(-1, 82, 3)
-        npy_x, npy_y, npy_z = npy[:, :82][:, :, np.newaxis], npy[:, 82:164][:, :, np.newaxis], npy[:, 164:][:, :, np.newaxis]
-        self.npy = np.concatenate((npy_x, npy_y, npy_z), axis = 2)
-        # print("load data successful with shape {}".format(self.npy.shape))
+        self.npy = self.npy.reshape(-1, 82, 3)
+        # npy_x, npy_y, npy_z = npy[:, :82][:, :, np.newaxis], npy[:, 82:164][:, :, np.newaxis], npy[:, 164:][:, :, np.newaxis]
+        # self.npy = np.concatenate((npy_x, npy_y, npy_z), axis = 2)
+        print("load data successful with shape {}".format(self.npy.shape))
         self.hand_landmarks = landmark_indices.HandLandmark()
         self.lip_landmarks = landmark_indices.LipPoints()
         self.dis_idx0, self.dis_idx1 = torch.where(torch.triu(torch.ones((21, 21)), 1) == 1)
@@ -53,7 +53,7 @@ class AslDataset(data.Dataset):
         landmarks = torch.tensor(landmarks.astype(np.float32))
         # print("convert data to torch shape: ", landmarks.shape)
         # sereparate part of body
-        lip, lhand, rhand = landmarks[:, :-42], landmarks[:, -42:-21], landmarks[:, -21:]
+        lip, lhand, rhand = landmarks[:, :-40], landmarks[:, -42:-21], landmarks[:, -21:]
         return lip, lhand, rhand
         # print("lip shape: {}, lhand shape: {}, rhand shape: {}".format(lip.shape, lhand.shape, rhand.shape))
         if self.phase == "train":
@@ -93,7 +93,7 @@ class AslDataset(data.Dataset):
         landmarks = torch.tensor(landmarks.astype(np.float32))
         # print("convert data to torch shape: ", landmarks.shape)
         # sereparate part of body
-        lip, lhand, rhand = landmarks[:, :-42], landmarks[:, -42:-21], landmarks[:, -21:]
+        lip, lhand, rhand = landmarks[:, :-40], landmarks[:, -42:-21], landmarks[:, -21:]
         return lip, lhand, rhand
         # print("lip shape: {}, lhand shape: {}, rhand shape: {}".format(lip.shape, lhand.shape, rhand.shape))
         if self.phase == "train":

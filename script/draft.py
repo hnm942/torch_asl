@@ -18,7 +18,13 @@ from models.transformer.encoder import TransformerEncoder
 from models.transformer.decoder import TransformerDecoder
 from torch import nn
 import matplotlib.pyplot as plt
+from models.data.landmark_indices import LipPoints, HandLandmark
 
+
+lip_ref = LipPoints()
+print(lip_ref.flaten_lip_points)
+hand_ref =HandLandmark()
+print(hand_ref.hand_points.shape)
 config = ASLConfig(max_landmark_size = 96, max_phrase_size = 64)
 # create df in numpy
 npy_path = "/workspace/data/asl_numpy_dataset/train_landmarks/train_npy"
@@ -65,9 +71,9 @@ val_loader = DataLoader(val_dataset, batch_size = 32, shuffle = True, drop_last 
 # landmark_mask= enc_input["attention_mask"] 
 # phrase = dec_input["target"]
 # phrase_mask = dec_input["target_mask"]
-lip, lhand, rhand = val_dataset.get_landmarks(val_dataset.df.iloc[0])
+lip, lhand, rhand = val_dataset.get_landmarks(val_dataset.df.iloc[1])
 print(lip[0].shape)
-plt.scatter(rhand[0, :, 0], rhand[0, :, 1])
+plt.scatter(lip[ 1, :, 0], lip[1 , :, 1])
 plt.show()
 # attn
 
